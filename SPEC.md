@@ -165,12 +165,14 @@ Each tick for registered linked pairs:
 6. Convert lateral displacement into a trailer orientation delta using `delta / TRAILER_AXLE_TO_HITCH_DISTANCE`.
 7. Clamp trailer/head angle difference to `MAX_HITCH_ANGLE_TURNS`.
 8. Reconstruct trailer center from hitch and trailer orientation.
-9. Move the hidden collision proxy from the last accepted pose to the reconstructed target pose in substeps with script build checks.
+9. Move the hidden collision proxy from the last accepted pose to the reconstructed target pose in substeps. Each substep compares `LuaSurface.can_place_entity` and `LuaEntity.teleport` for the proxy at the step position and rounded direction, using `defines.build_check_type.ghost_revive` for both calls.
 10. If every substep succeeds, teleport the visible trailer to the accepted proxy position and assign both orientations.
 11. If any substep fails, restore the head, proxy, visible trailer, hitch history, and trailer orientation to the last accepted pose; set head speed to `0`; show blocked debug text.
 12. Store the accepted head, hitch, proxy/trailer position, and trailer orientation for save/load continuity.
 
 The proxy substep target spacing is `0.22` tiles. The step count is based on the larger of center movement and angular sweep at the trailer collision-box half diagonal, capped at `64` substeps per linked trailer per tick to keep UPS cost bounded.
+
+`defines.build_check_type.ghost_revive` is selected for Phase 1 proxy checks because the official runtime API documents `LuaSurface.can_place_entity` as defaulting to `ghost_revive`, while `LuaEntity.teleport` defaults to `script`. Using `ghost_revive` explicitly on both calls keeps the placement pre-check and the actual teleport check aligned.
 
 The head's acceleration, braking, steering, and speed are left to Factorio's native car physics.
 
@@ -190,6 +192,7 @@ Known limitations:
 
 - Scripted trailer proxy movement may not produce native car impact damage, tree destruction, or vehicle damage.
 - Proxy movement is substepped from the last accepted pose to reduce teleport tunneling. If a substep fails, the whole tick is rejected; partial substep progress is not accepted.
+- `LuaEntity.teleport` is treated as authoritative for movement. `can_place_entity` is diagnostic only, because in-game testing showed `can_place=false` and `teleport=true` near nearby objects where the proxy could actually move. When debug rendering is enabled, blocked ticks show the failing substep plus both results.
 - On proxy movement failure, head movement is rolled back to the last accepted head pose and `head.speed` is set to `0`.
 - Debug rendering shows a short-lived `Trailer blocked` text when the proxy teleport fails.
 
@@ -211,5 +214,6 @@ Runtime debug rendering is enabled for Phase 1 with a single local constant in `
 - hitch position in yellow,
 - trailer axle position in green,
 - hitch angle text near the head.
+- blocked diagnostic text with the failing substep number, build check type, `can_place_entity` result, and `teleport` result.
 
 If debug rendering is turned off, the rendering code returns before doing geometry work.

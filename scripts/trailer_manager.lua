@@ -13,6 +13,8 @@ local DEBUG_LINE_WIDTH = 3
 local DEBUG_TEXT_SCALE = 0.8
 local MAX_PROXY_SUBSTEP_DISTANCE = 0.22
 local MAX_PROXY_SUBSTEPS = 64
+local PROXY_BUILD_CHECK_TYPE = defines.build_check_type.ghost_revive
+local PROXY_BUILD_CHECK_TYPE_NAME = "ghost_revive"
 
 local HEAD_COLLISION_BOX = geometry.HEAD_COLLISION_BOX
 local TRAILER_COLLISION_BOX = geometry.TRAILER_COLLISION_BOX
@@ -191,6 +193,32 @@ local function render_blocked_debug(link, state)
   }
 end
 
+local function render_blocked_diagnostic(link, state, diagnostic)
+  if not DEBUG_RENDERING or not diagnostic then
+    return
+  end
+
+  rendering.draw_text{
+    text = string.format(
+      "substep %d/%d  check:%s  can_place:%s  teleport:%s",
+      diagnostic.failed_step or 0,
+      diagnostic.steps or 0,
+      diagnostic.check_type or PROXY_BUILD_CHECK_TYPE_NAME,
+      tostring(diagnostic.can_place),
+      tostring(diagnostic.teleport)
+    ),
+    surface = link.head.surface,
+    target = {
+      x = state.trailer_center.x,
+      y = state.trailer_center.y - 1.25
+    },
+    color = {1, 0.75, 0.15, 0.95},
+    scale = 0.65,
+    alignment = "center",
+    time_to_live = 90
+  }
+end
+
 local function create_collision_proxy(surface, force, position, orientation)
   local proxy = surface.create_entity{
     name = TRAILER_PROXY_NAME,
@@ -210,6 +238,8 @@ end
 
 local function move_proxy_substepped(link, target_position, target_orientation)
   local proxy = link.collision_proxy
+  local surface = proxy.surface
+  local force = proxy.force
   local start_position = copy_position(link.accepted_trailer_position or proxy.position)
   local start_orientation = link.accepted_trailer_orientation or proxy.orientation
   local steps = substep_count(start_position, start_orientation, target_position, target_orientation)
@@ -225,20 +255,42 @@ local function move_proxy_substepped(link, target_position, target_orientation)
       y = start_position.y + (target_position.y - start_position.y) * ratio
     }
     local step_orientation = interpolate_orientation(start_orientation, target_orientation, ratio)
+    local step_direction = orientation_to_direction(step_orientation)
+    local can_place = surface.can_place_entity{
+      name = TRAILER_PROXY_NAME,
+      position = step_position,
+      direction = step_direction,
+      force = force,
+      build_check_type = PROXY_BUILD_CHECK_TYPE
+    }
 
     proxy.orientation = step_orientation
-    if not proxy.teleport(step_position, nil, false, false, defines.build_check_type.script) then
+    local teleport_result = proxy.teleport(step_position, nil, false, false, PROXY_BUILD_CHECK_TYPE)
+
+    if not teleport_result then
       proxy.orientation = start_orientation
       proxy.teleport(start_position, nil, false, false)
       proxy.speed = 0
-      return false, steps, step
+      return false, {
+        steps = steps,
+        failed_step = step,
+        check_type = PROXY_BUILD_CHECK_TYPE_NAME,
+        can_place = can_place,
+        teleport = teleport_result
+      }
     end
     proxy.speed = 0
   end
 
   proxy.orientation = target_orientation
   proxy.speed = 0
-  return true, steps, steps
+  return true, {
+    steps = steps,
+    failed_step = steps,
+    check_type = PROXY_BUILD_CHECK_TYPE_NAME,
+    can_place = true,
+    teleport = true
+  }
 end
 
 local function can_place_collision_proxy(surface, force, position, orientation)
@@ -247,7 +299,7 @@ local function can_place_collision_proxy(surface, force, position, orientation)
     position = position,
     direction = orientation_to_direction(orientation or 0),
     force = force,
-    build_check_type = defines.build_check_type.script
+    build_check_type = PROXY_BUILD_CHECK_TYPE
   }
 end
 
@@ -457,12 +509,20 @@ function manager.on_tick()
       restore_accepted_state(link)
       render_debug(link, state, true)
       render_blocked_debug(link, state)
+      render_blocked_diagnostic(link, state, {
+        steps = 0,
+        failed_step = 0,
+        check_type = PROXY_BUILD_CHECK_TYPE_NAME,
+        can_place = false,
+        teleport = false
+      })
     elseif link.head.surface ~= link.trailer.surface or link.head.surface ~= link.collision_proxy.surface then
       remove_link(head_unit_number)
     else
       ensure_accepted_state(link)
       local state = physics.next_state(link)
-      if move_proxy_substepped(link, state.trailer_center, state.trailer_orientation) then
+      local moved, diagnostic = move_proxy_substepped(link, state.trailer_center, state.trailer_orientation)
+      if moved then
         link.trailer.teleport(link.collision_proxy.position, nil, false, false)
         link.trailer.orientation = state.trailer_orientation
         link.trailer.speed = 0
@@ -472,6 +532,7 @@ function manager.on_tick()
         restore_accepted_state(link)
         render_debug(link, state, true)
         render_blocked_debug(link, state)
+        render_blocked_diagnostic(link, state, diagnostic)
       end
     end
   end
