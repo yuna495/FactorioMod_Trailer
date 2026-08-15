@@ -1,4 +1,4 @@
-local TECHNOLOGY_ICON = "__Trailer__/graphics/technology/technology.png"
+local TECHNOLOGY_ICON = "__War_Rig_Transport__/graphics/technology/technology.png"
 
 local function red_green_unit(count)
   return {

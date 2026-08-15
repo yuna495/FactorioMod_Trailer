@@ -1,6 +1,6 @@
 local item_sounds = require("__base__.prototypes.item_sounds")
 
-local ROAD_ICON = "__Trailer__/graphics/icon/icon.png"
+local ROAD_ICON = "__War_Rig_Transport__/graphics/icon/icon.png"
 
 data:extend({
   {

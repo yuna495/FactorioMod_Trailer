@@ -2,14 +2,14 @@ local trailer = table.deepcopy(data.raw.car.car)
 local proxy = table.deepcopy(data.raw.car.car)
 local geometry = require("scripts.trailer_geometry")
 
-local ICON_PATH = "__Trailer__/graphics/icon/"
-local MAP_SYMBOL_PATH = "__Trailer__/graphics/map_symbol/"
+local ICON_PATH = "__War_Rig_Transport__/graphics/icon/"
+local MAP_SYMBOL_PATH = "__War_Rig_Transport__/graphics/map_symbol/"
 
 local function trailer_body_stripes()
   local stripes = {}
   for index = 0, 7 do
     stripes[#stripes + 1] = {
-      filename = "__Trailer__/graphics/entity/trailer/warrig_trailer_" .. index .. ".png",
+      filename = "__War_Rig_Transport__/graphics/entity/trailer/warrig_trailer_" .. index .. ".png",
       width_in_frames = 4,
       height_in_frames = 4
     }
@@ -21,7 +21,7 @@ local function trailer_shadow_stripes()
   local stripes = {}
   for index = 0, 7 do
     stripes[#stripes + 1] = {
-      filename = "__Trailer__/graphics/entity/trailer/warrig_trailer_shadow_" .. index .. ".png",
+      filename = "__War_Rig_Transport__/graphics/entity/trailer/warrig_trailer_shadow_" .. index .. ".png",
       width_in_frames = 4,
       height_in_frames = 4
     }

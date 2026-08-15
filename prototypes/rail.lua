@@ -11,10 +11,10 @@ local ROAD_RAIL_HALF_DIAGONAL_NAME = "trailer-road-rail-half-diagonal"
 local ROAD_RAIL_CURVED_A_NAME = "trailer-road-rail-curved-a"
 local ROAD_RAIL_CURVED_B_NAME = "trailer-road-rail-curved-b"
 
-local WARRIG_SOUND_PATH = "__Trailer__/sounds/"
-local ICON_PATH = "__Trailer__/graphics/icon/"
-local MAP_SYMBOL_PATH = "__Trailer__/graphics/map_symbol/"
-local RAIL_PATH = "__Trailer__/graphics/entity/rail/"
+local WARRIG_SOUND_PATH = "__War_Rig_Transport__/sounds/"
+local ICON_PATH = "__War_Rig_Transport__/graphics/icon/"
+local MAP_SYMBOL_PATH = "__War_Rig_Transport__/graphics/map_symbol/"
+local RAIL_PATH = "__War_Rig_Transport__/graphics/entity/rail/"
 
 local ROAD_RAIL_RESISTANCES = {
   {
@@ -32,7 +32,7 @@ local ROAD_RAIL_RESISTANCES = {
 local function warrig_body_filenames()
   local filenames = {}
   for index = 0, 15 do
-    filenames[#filenames + 1] = "__Trailer__/graphics/entity/warrig/warrig_" .. index .. ".png"
+    filenames[#filenames + 1] = "__War_Rig_Transport__/graphics/entity/warrig/warrig_" .. index .. ".png"
   end
   return filenames
 end
@@ -40,7 +40,7 @@ end
 local function warrig_shadow_filenames()
   local filenames = {}
   for index = 0, 1 do
-    filenames[#filenames + 1] = "__Trailer__/graphics/entity/warrig/warrig_shadow_" .. index .. ".png"
+    filenames[#filenames + 1] = "__War_Rig_Transport__/graphics/entity/warrig/warrig_shadow_" .. index .. ".png"
   end
   return filenames
 end
@@ -48,7 +48,7 @@ end
 local function trailer_body_filenames()
   local filenames = {}
   for index = 0, 7 do
-    filenames[#filenames + 1] = "__Trailer__/graphics/entity/trailer/warrig_trailer_" .. index .. ".png"
+    filenames[#filenames + 1] = "__War_Rig_Transport__/graphics/entity/trailer/warrig_trailer_" .. index .. ".png"
   end
   return filenames
 end
@@ -56,7 +56,7 @@ end
 local function trailer_shadow_filenames()
   local filenames = {}
   for index = 0, 7 do
-    filenames[#filenames + 1] = "__Trailer__/graphics/entity/trailer/warrig_trailer_shadow_" .. index .. ".png"
+    filenames[#filenames + 1] = "__War_Rig_Transport__/graphics/entity/trailer/warrig_trailer_shadow_" .. index .. ".png"
   end
   return filenames
 end

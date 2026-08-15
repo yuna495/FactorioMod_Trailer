@@ -19,7 +19,7 @@ local TECHNOLOGY_UNLOCKS = {
     "trailer-road-rails"
   }
 }
-local DEBUG_RENDERING = true
+local DEBUG_RENDERING = false
 
 local DEBUG_TIME_TO_LIVE = 2
 local DEBUG_LINE_WIDTH = 3
@@ -254,7 +254,7 @@ local function apply_proxy_damage_to_trailer(proxy, damage_amount)
       local remaining_health = current_health - damage_amount
       if remaining_health <= 0 then
         trailer.health = 0
-        remove_whole_link_for_entity(trailer, link, head_unit_number, nil)
+        remove_whole_link_for_entity(nil, link, head_unit_number, nil)
       else
         trailer.health = remaining_health
         restore_proxy_health(proxy)

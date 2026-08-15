@@ -1,8 +1,8 @@
-# Trailer SPEC
+# War Rig Transport SPEC
 
 ## Scope
 
-This mod implements Factorio 2.x free-driving semi-trailer prototypes:
+This mod implements Factorio 2.x War Rig Transport prototypes:
 
 - A player-drivable trailer head based on the base game's `car` prototype.
 - A separate visible cargo trailer entity based on the base game's `car` prototype.
@@ -344,7 +344,7 @@ Research:
 - `triple-trailer-head` is displayed as `Triple-Trailer`, requires `double-trailer-head`, costs 300 automation + logistic science packs, and unlocks the `triple-trailer-head` recipe.
 - `trailer-rail-war-rig` is displayed as `Rail War Rig`, requires `automated-rail-transportation` and `fluid-wagon`, costs 250 automation + logistic science packs, and unlocks `trailer-rail-locomotive`, `trailer-rail-cargo-wagon`, `trailer-rail-fluid-wagon`, and `trailer-road-rails`.
 
-The technology stage does not create persistent runtime state. Existing saves keep their entities and storage links. On init/configuration change, each force's Trailer recipes are synchronized to the researched state of these technologies so older saves do not keep the previous temporary always-enabled recipes unless the matching technology is researched.
+The technology stage does not create persistent runtime state. Existing saves keep their entities and storage links. On init/configuration change, each force's War Rig Transport recipes are synchronized to the researched state of these technologies so older saves do not keep the previous temporary always-enabled recipes unless the matching technology is researched.
 
 ## Runtime State
 
@@ -504,7 +504,7 @@ The mod's existing forward vector makes local negative Y the forward direction. 
 
 The values are defined once in `scripts/trailer_geometry.lua` and reused by data-stage prototypes and runtime debug rendering.
 
-Reason: Factorio collision masks are prototype-level. `not_colliding_with_itself=true` applies when both entities have the option and the same collision layers, so this mod gives `trailer-head` and `trailer-cargo-collision-proxy` the same linked-vehicle mask. This cannot express "ignore only this exact linked pair" and may also prevent collision between multiple Trailer MOD vehicle parts that share the same mask. The mask stays otherwise equivalent to vanilla `car`, because vanilla car already collides with trees and buildings through shared `player` / `is_object` layers while still crossing ground rails.
+Reason: Factorio collision masks are prototype-level. `not_colliding_with_itself=true` applies when both entities have the option and the same collision layers, so this mod gives `trailer-head` and `trailer-cargo-collision-proxy` the same linked-vehicle mask. This cannot express "ignore only this exact linked pair" and may also prevent collision between multiple War Rig Transport vehicle parts that share the same mask. The mask stays otherwise equivalent to vanilla `car`, because vanilla car already collides with trees and buildings through shared `player` / `is_object` layers while still crossing ground rails.
 
 Known limitations:
 

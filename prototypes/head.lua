@@ -1,9 +1,9 @@
 local head = table.deepcopy(data.raw.car.car)
 local geometry = require("scripts.trailer_geometry")
 
-local WARRIG_SOUND_PATH = "__Trailer__/sounds/"
-local ICON_PATH = "__Trailer__/graphics/icon/"
-local MAP_SYMBOL_PATH = "__Trailer__/graphics/map_symbol/"
+local WARRIG_SOUND_PATH = "__War_Rig_Transport__/sounds/"
+local ICON_PATH = "__War_Rig_Transport__/graphics/icon/"
+local MAP_SYMBOL_PATH = "__War_Rig_Transport__/graphics/map_symbol/"
 local SEMI_HEAD_TUNING = {
   effectivity = 0.7,
   consumption = "2500kW",
@@ -22,7 +22,7 @@ local function warrig_body_stripes()
   local stripes = {}
   for index = 0, 15 do
     stripes[#stripes + 1] = {
-      filename = "__Trailer__/graphics/entity/warrig/warrig_" .. index .. ".png",
+      filename = "__War_Rig_Transport__/graphics/entity/warrig/warrig_" .. index .. ".png",
       width_in_frames = 3,
       height_in_frames = 8
     }

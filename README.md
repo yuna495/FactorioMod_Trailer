@@ -1,4 +1,4 @@
-# Trailer
+# War Rig Transport
 
 Factorio 2.0向けのトレーラーMODです。
 
@@ -7,7 +7,7 @@ War Rig風の車両版トレーラーと、列車版のRail War Rigを追加し�
 ## 要件
 
 - Factorio 2.0
-- MOD名: `Trailer`
+- MOD名: `War Rig Transport`
 - 現在のバージョン: `0.1.0`
 
 ## 追加される主な要素

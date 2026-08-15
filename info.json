@@ -1,10 +1,10 @@
 {
-  "name": "Trailer",
+  "name": "War_Rig_Transport",
   "version": "0.1.0",
-  "title": "Trailer",
+  "title": "War Rig Transport",
   "author": "yuna495",
   "factorio_version": "2.0",
-  "description": "Free-driving semi-trailer prototypes and War Rig-styled rail rolling stock.",
+  "description": "Free-driving trailer prototypes and War Rig-styled rail rolling stock.",
   "dependencies": [
     "base >= 2.0"
   ]
