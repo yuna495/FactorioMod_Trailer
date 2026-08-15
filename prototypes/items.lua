@@ -29,5 +29,19 @@ data:extend({
     place_result = "trailer-cargo",
     stack_size = 1,
     hidden = true
+  },
+  {
+    type = "item",
+    name = "double-trailer-head",
+    localised_name = {"item-name.double-trailer-head"},
+    localised_description = {"item-description.double-trailer-head"},
+    icon = "__base__/graphics/icons/car.png",
+    subgroup = "transport",
+    order = "b[personal-transport]-e[double-trailer-head]",
+    inventory_move_sound = item_sounds.vehicle_inventory_move,
+    pick_sound = item_sounds.vehicle_inventory_pickup,
+    drop_sound = item_sounds.vehicle_inventory_move,
+    place_result = "double-trailer-head",
+    stack_size = 1
   }
 })

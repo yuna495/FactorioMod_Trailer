@@ -2,18 +2,19 @@
 
 ## Scope
 
-This mod implements a Factorio 2.x Phase 1 free-driving semi-trailer prototype:
+This mod implements Factorio 2.x free-driving semi-trailer prototypes:
 
 - A player-drivable trailer head based on the base game's `car` prototype.
 - A separate visible cargo trailer entity based on the base game's `car` prototype.
 - A hidden collision proxy entity based on the base game's `car` prototype.
-- One fixed trailer per head.
+- One fixed trailer behind a `trailer-head` Semi-Trailer.
+- Two fixed trailers behind a `double-trailer-head` Double-Trailer.
 - Automatic trailer creation behind the head when a trailer head is built.
 - Runtime kinematic following driven by the head entity's Factorio-updated `position`, `orientation`, `speed`, `surface`, and validity.
 - Persistent head/trailer linkage stored in `storage`.
 - Trailer cargo inventory exposed through the visible cargo vehicle inventory so inserters and players can load and unload it.
 
-Phase 1 does not implement GUI coupling, multiple trailers, or complete obstacle collision resolution.
+Phase 2 does not implement GUI coupling, coupling/uncoupling, manual cargo-only placement, fluid trailers, tank trailers, triple trailers, automatic driving, Rail War Rig behavior, technology-tree integration, or complete native vehicle impact behavior.
 
 ## Reference Findings
 
@@ -100,6 +101,21 @@ Prototype name: `trailer-head`
 - Emits War Rig-style black exhaust smoke from two rear exhaust positions while burning fuel
 - Has a moderate trunk inventory
 
+The in-game display name for `trailer-head` is `Semi-Trailer`. The prototype name remains `trailer-head` for save compatibility.
+
+### Double Trailer Head
+
+Prototype name: `double-trailer-head`
+
+- Type: `car`
+- Deep copy of the configured `trailer-head` prototype.
+- Uses the same sprite, collision, engine, fuel, acceleration, braking, rotation, weight, exhaust, and sound settings as `trailer-head`.
+- `name`, `localised_name`, `localised_description`, and `minable.result` are changed for the Double-Trailer item.
+- Player-drivable.
+- Automatically creates two visible cargo trailers and two hidden collision proxies when built.
+
+The in-game display name for `double-trailer-head` is `Double-Trailer`.
+
 ### Trailer Cargo
 
 Prototype name: `trailer-cargo`
@@ -125,9 +141,41 @@ Prototype name: `trailer-cargo-collision-proxy`
 - Uses the same explicit collision mask as `trailer-head`, with `not_colliding_with_itself=true`, so the scripted linked vehicle parts do not collide with each other.
 - Uses the full trailer collision footprint. Collision with the linked head is avoided through the shared linked-vehicle collision mask and `not_colliding_with_itself=true`.
 
+### Items and Recipes
+
+- `trailer-head` places `trailer-head` and is displayed as `Semi-Trailer`.
+- `double-trailer-head` places `double-trailer-head` and is displayed as `Double-Trailer`.
+- `trailer-cargo` remains hidden and is created only by script.
+- `double-trailer-head` has an enabled temporary Phase 2 test recipe using ordinary intermediate items.
+
 ## Runtime State
 
-Runtime linkage is stored as:
+Runtime linkage is stored with an explicit variant and segment list. New links use:
+
+```lua
+storage.trailers = {
+  [head_unit_number] = {
+    variant = "single" or "double",
+    head = LuaEntity,
+    trailers = {
+      [1] = {
+        trailer = LuaEntity,
+        collision_proxy = LuaEntity,
+        previous_hitch_position = {x = number, y = number},
+        trailer_orientation = number,
+        accepted_hitch_position = {x = number, y = number},
+        accepted_trailer_position = {x = number, y = number},
+        accepted_trailer_orientation = number
+      },
+      [2] = ...
+    },
+    accepted_head_position = {x = number, y = number},
+    accepted_head_orientation = number
+  }
+}
+```
+
+Phase 1 saves may still contain the old single-trailer shape:
 
 ```lua
 storage.trailers = {
@@ -146,6 +194,8 @@ storage.trailers = {
 }
 ```
 
+`script.on_init` and `script.on_configuration_changed` migrate the old shape to `variant = "single"` and `trailers = {[1] = ...}` without destroying valid Phase 1 entities.
+
 `storage.trailers_by_trailer_unit_number` maps visible trailer unit numbers back to head unit numbers for cleanup and driver ejection.
 `storage.trailers_by_proxy_unit_number` maps hidden collision proxy unit numbers back to head unit numbers for cleanup and driver ejection.
 
@@ -153,10 +203,11 @@ Invalid entities are removed from storage during tick processing and relevant de
 
 ## Kinematics
 
-Current Phase 1 geometry constants:
+Current geometry constants:
 
 - head center to hitch: `2.46` tiles
 - trailer center to hitch: `5.52` tiles
+- trailer center to rear hitch: `5.52` tiles
 - trailer axle to hitch: `8.94` tiles
 - trailer lateral response: `0.95`
 - stationary head speed threshold: `0.002`
@@ -166,12 +217,12 @@ Current Phase 1 geometry constants:
 Current trailer head tuning values:
 
 - effectivity: `0.7`
-- consumption: `"200kW"`
+- consumption: `"1500kW"`
 - braking power: `"200kW"`
-- friction: `0.002`
+- friction: `0.0015`
 - rotation speed: `0.01`
 - rotation snap angle: `0.015`
-- weight: `3000`
+- weight: `20000`
 
 Current prototype dimensions:
 
@@ -192,22 +243,28 @@ Current sprite setup:
 
 The first sprite direction faces north and follows Factorio's car orientation order; `orientation = 0`, `0.25`, `0.5`, and `0.75` are intended to correspond to north, east, south, and west.
 
-Each tick for registered linked pairs:
+Each tick for registered linked vehicles:
 
-1. Validate head and trailer.
-2. Compute current hitch position behind the head.
-3. If the head speed and hitch movement are both below the stationary thresholds, reuse the accepted trailer center and orientation without applying no-side-slip correction.
-4. Otherwise, derive the previously accepted trailer axle position from the accepted trailer center and orientation.
-5. Compute the ideal no-side-slip trailer orientation from the previous axle position toward the current hitch position.
-6. Blend the stored trailer orientation toward that no-side-slip orientation by `TRAILER_LATERAL_RESPONSE`.
-7. Ignore the blended angle delta if it is below `TRAILER_ANGLE_DEADZONE_TURNS`.
-8. Clamp trailer/head angle difference to `MAX_HITCH_ANGLE_TURNS`.
-9. Reconstruct trailer center from hitch and trailer orientation.
-10. Derive the debug axle position from hitch and trailer orientation.
-11. Move the hidden collision proxy from the last accepted pose to the reconstructed target pose in substeps. Each substep compares `LuaSurface.can_place_entity` and `LuaEntity.teleport` for the proxy at the step position and rounded direction, using `defines.build_check_type.ghost_revive` for both calls.
-12. If every substep succeeds, teleport the visible trailer to the accepted proxy position and assign both orientations.
-13. If any substep fails, restore the head, proxy, visible trailer, hitch history, and trailer orientation to the last accepted pose; set head speed to `0`; show blocked debug text.
-14. Store the accepted head, hitch, proxy/trailer position, and trailer orientation for save/load continuity.
+1. Validate head and all trailers in the variant.
+2. Compute Trailer A from the head rear hitch using the same kinematics as Phase 1.
+3. For Double-Trailer, compute Trailer B from Trailer A's rear hitch. Trailer B's maximum articulation compares Trailer A orientation against Trailer B orientation, not head orientation against Trailer B orientation.
+4. Move all hidden collision proxies from their last accepted poses to the reconstructed target poses in substeps. Each substep compares `LuaSurface.can_place_entity` and `LuaEntity.teleport` for the proxy at the step position and rounded direction, using `defines.build_check_type.ghost_revive` for both calls.
+5. Accept the tick only if every proxy movement succeeds.
+6. If every proxy succeeds, teleport the visible trailers to the accepted proxy positions and assign all orientations.
+7. If any proxy fails, restore the head, all proxies, all visible trailers, hitch histories, and trailer orientations to the last accepted pose; set head speed to `0`; show blocked debug text.
+8. Store the accepted head, hitch, proxy/trailer positions, and trailer orientations for save/load continuity.
+
+The per-segment trailer solver:
+
+1. Receives a tow hitch position, tow orientation, tow speed, and the segment's previous accepted pose.
+2. If the tow speed and hitch movement are both below the stationary thresholds, reuse the accepted trailer center and orientation without applying no-side-slip correction.
+3. Otherwise, derive the previously accepted trailer axle position from the accepted trailer center and orientation.
+4. Compute the ideal no-side-slip trailer orientation from the previous axle position toward the current hitch position.
+5. Blend the stored trailer orientation toward that no-side-slip orientation by `TRAILER_LATERAL_RESPONSE`.
+6. Ignore the blended angle delta if it is below `TRAILER_ANGLE_DEADZONE_TURNS`.
+7. Clamp trailer/tow angle difference to `MAX_HITCH_ANGLE_TURNS`.
+8. Reconstruct trailer center from hitch and trailer orientation.
+9. Derive the debug axle position from hitch and trailer orientation.
 
 `TRAILER_LATERAL_RESPONSE` is a tire-side-slip resistance approximation. `1.0` means the trailer tries to satisfy the axle no-side-slip constraint immediately. Lower values allow more side drag/slip and smooth the response. Higher values make the trailer rotate toward the axle constraint more aggressively.
 
@@ -227,7 +284,7 @@ The visible trailer cargo entity uses the trailer-sized collision box even thoug
 
 Factorio `collision_box` is a single bounding box and cannot contain a hole. The hidden collision proxy uses the full trailer footprint so the visual front/kingpin area is also covered. Self-collision with the linked head is avoided by giving both prototypes the same linked mask and `not_colliding_with_itself=true`.
 
-The mod's existing forward vector makes local negative Y the forward direction. The collision proxy covers local Y from `-5.0` to `5.0` and includes the entity origin `{0, 0}`.
+The mod's existing forward vector makes local negative Y the forward direction. The collision proxy covers local Y from `-6.0` to `6.0` and includes the entity origin `{0, 0}`.
 
 The values are defined once in `scripts/trailer_geometry.lua` and reused by data-stage prototypes and runtime debug rendering.
 
@@ -238,7 +295,7 @@ Known limitations:
 - Scripted trailer proxy movement may not produce native car impact damage, tree destruction, or vehicle damage.
 - Proxy movement is substepped from the last accepted pose to reduce teleport tunneling. If a substep fails, the whole tick is rejected; partial substep progress is not accepted.
 - `LuaEntity.teleport` is treated as authoritative for movement. `can_place_entity` is diagnostic only, because in-game testing showed `can_place=false` and `teleport=true` near nearby objects where the proxy could actually move. When debug rendering is enabled, blocked ticks show the failing substep plus both results.
-- On proxy movement failure, head movement is rolled back to the last accepted head pose and `head.speed` is set to `0`.
+- On proxy movement failure, head movement is rolled back to the last accepted head pose and `head.speed` is set to `0`. In Double-Trailer links, proxy movement is atomic across Trailer A and Trailer B: a failure for either proxy rejects the whole vehicle update and restores both trailers.
 - Debug rendering shows a short-lived `Trailer blocked` text when the proxy teleport fails.
 
 Phase 2 should investigate native impact damage and obstacle destruction behavior.
@@ -249,16 +306,16 @@ The mod uses `storage`, keeps LuaEntity references only for entities it owns, an
 
 ## Debugging
 
-Runtime debug rendering is enabled for Phase 1 with a single local constant in `scripts/trailer_manager.lua`. When enabled, it draws short-lived rendering objects each tick:
+Runtime debug rendering is enabled with a single local constant in `scripts/trailer_manager.lua`. When enabled, it draws short-lived rendering objects each tick:
 
 - rotated head collision-box outline in red,
-- rotated accepted trailer proxy collision-box outline in blue,
+- rotated accepted trailer proxy collision-box outlines in blue,
 - rotated rejected target trailer proxy outline in orange when proxy movement is blocked,
 - head center in white,
-- trailer center in white,
-- hitch position in yellow,
-- trailer axle position in green,
-- hitch angle text near the head.
+- trailer centers in white,
+- hitch positions in yellow,
+- trailer axle positions in green,
+- per-segment hitch angle text.
 - blocked diagnostic text with the failing substep number, build check type, `can_place_entity` result, and `teleport` result.
 
 If debug rendering is turned off, the rendering code returns before doing geometry work.

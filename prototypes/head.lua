@@ -112,4 +112,10 @@ head.light_animation = nil
 head.turret_animation = nil
 head.turret_rotation_speed = nil
 
-data:extend({head})
+local double_head = table.deepcopy(head)
+double_head.name = "double-trailer-head"
+double_head.localised_name = {"entity-name.double-trailer-head"}
+double_head.localised_description = {"entity-description.double-trailer-head"}
+double_head.minable = {mining_time = 0.5, result = "double-trailer-head"}
+
+data:extend({head, double_head})

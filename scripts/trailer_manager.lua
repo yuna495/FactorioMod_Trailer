@@ -4,6 +4,7 @@ local geometry = require("scripts.trailer_geometry")
 local manager = {}
 
 local HEAD_NAME = "trailer-head"
+local DOUBLE_HEAD_NAME = "double-trailer-head"
 local TRAILER_NAME = "trailer-cargo"
 local TRAILER_PROXY_NAME = "trailer-cargo-collision-proxy"
 local DEBUG_RENDERING = true
@@ -44,15 +45,78 @@ local function is_valid(entity)
   return entity and entity.valid
 end
 
+local function copy_position(position)
+  return {x = position.x, y = position.y}
+end
+
+local function segment_count_for_head(head_name)
+  if head_name == DOUBLE_HEAD_NAME then
+    return 2
+  end
+  return 1
+end
+
+local function variant_for_head(head_name)
+  if head_name == DOUBLE_HEAD_NAME then
+    return "double"
+  end
+  return "single"
+end
+
+local function migrate_link_shape(link)
+  if link.trailers then
+    link.variant = link.variant or variant_for_head(link.head and link.head.name)
+    return
+  end
+
+  link.variant = link.variant or "single"
+  link.trailers = {
+    {
+      trailer = link.trailer,
+      collision_proxy = link.collision_proxy,
+      previous_hitch_position = link.previous_hitch_position,
+      trailer_orientation = link.trailer_orientation,
+      accepted_hitch_position = link.accepted_hitch_position,
+      accepted_trailer_position = link.accepted_trailer_position,
+      accepted_trailer_orientation = link.accepted_trailer_orientation
+    }
+  }
+
+  link.trailer = nil
+  link.collision_proxy = nil
+  link.previous_hitch_position = nil
+  link.trailer_orientation = nil
+  link.accepted_hitch_position = nil
+  link.accepted_trailer_position = nil
+  link.accepted_trailer_orientation = nil
+end
+
 local function remove_link(head_unit_number)
   local link = storage.trailers[head_unit_number]
-  if link and is_valid(link.trailer) and link.trailer.name == TRAILER_NAME then
-    storage.trailers_by_trailer_unit_number[link.trailer.unit_number] = nil
-  end
-  if link and is_valid(link.collision_proxy) and link.collision_proxy.name == TRAILER_PROXY_NAME then
-    storage.trailers_by_proxy_unit_number[link.collision_proxy.unit_number] = nil
+  if link then
+    migrate_link_shape(link)
+    for _, segment in pairs(link.trailers) do
+      if is_valid(segment.trailer) and segment.trailer.name == TRAILER_NAME then
+        storage.trailers_by_trailer_unit_number[segment.trailer.unit_number] = nil
+      end
+      if is_valid(segment.collision_proxy) and segment.collision_proxy.name == TRAILER_PROXY_NAME then
+        storage.trailers_by_proxy_unit_number[segment.collision_proxy.unit_number] = nil
+      end
+    end
   end
   storage.trailers[head_unit_number] = nil
+end
+
+local function destroy_link_entities(link, except_entity)
+  migrate_link_shape(link)
+  for _, segment in pairs(link.trailers) do
+    if is_valid(segment.trailer) and segment.trailer ~= except_entity then
+      segment.trailer.destroy{raise_destroy = true}
+    end
+    if is_valid(segment.collision_proxy) and segment.collision_proxy ~= except_entity then
+      segment.collision_proxy.destroy{raise_destroy = true}
+    end
+  end
 end
 
 local function rotate_local_point(center, orientation, local_point)
@@ -108,12 +172,8 @@ local function draw_marker(surface, position, color, radius)
   }
 end
 
-local function hitch_angle_degrees(head_orientation, trailer_orientation)
-  return math.abs(physics.shortest_delta_turns(head_orientation, trailer_orientation)) * 360
-end
-
-local function copy_position(position)
-  return {x = position.x, y = position.y}
+local function hitch_angle_degrees(tow_orientation, trailer_orientation)
+  return math.abs(physics.shortest_delta_turns(tow_orientation, trailer_orientation)) * 360
 end
 
 local function orientation_to_direction(orientation)
@@ -136,46 +196,53 @@ local function substep_count(from_position, from_orientation, to_position, to_or
   return math.min(steps, MAX_PROXY_SUBSTEPS)
 end
 
-local function render_debug(link, state, blocked)
+local function render_debug(link, states, blocked)
   if not DEBUG_RENDERING then
     return
   end
 
   local surface = link.head.surface
-  local accepted_center = link.trailer.position
-  local accepted_orientation = link.trailer.orientation
-  if is_valid(link.collision_proxy) then
-    accepted_center = link.collision_proxy.position
-    accepted_orientation = link.collision_proxy.orientation
-  end
-
   draw_rotated_box(surface, link.head.position, link.head.orientation, HEAD_COLLISION_BOX, COLORS.head_box)
-  draw_rotated_box(surface, accepted_center, accepted_orientation, TRAILER_COLLISION_BOX, COLORS.trailer_box)
-  if blocked then
-    draw_rotated_box(surface, state.trailer_center, state.trailer_orientation, TRAILER_COLLISION_BOX, COLORS.target_box)
-  end
-
   draw_marker(surface, link.head.position, COLORS.head_center, 0.10)
-  draw_marker(surface, accepted_center, COLORS.trailer_center, 0.10)
-  draw_marker(surface, state.hitch, COLORS.hitch, 0.13)
-  draw_marker(surface, state.trailer_axle, COLORS.axle, 0.13)
 
-  rendering.draw_text{
-    text = string.format("Hitch angle: %.1f deg", hitch_angle_degrees(link.head.orientation, state.trailer_orientation)),
-    surface = surface,
-    target = {
-      x = link.head.position.x,
-      y = link.head.position.y - 2.2
-    },
-    color = COLORS.text,
-    scale = DEBUG_TEXT_SCALE,
-    alignment = "center",
-    time_to_live = DEBUG_TIME_TO_LIVE
-  }
+  local tow_orientation = link.head.orientation
+  for index, segment in ipairs(link.trailers) do
+    local state = states[index]
+    local accepted_center = segment.trailer.position
+    local accepted_orientation = segment.trailer.orientation
+    if is_valid(segment.collision_proxy) then
+      accepted_center = segment.collision_proxy.position
+      accepted_orientation = segment.collision_proxy.orientation
+    end
+
+    draw_rotated_box(surface, accepted_center, accepted_orientation, TRAILER_COLLISION_BOX, COLORS.trailer_box)
+    if blocked and state then
+      draw_rotated_box(surface, state.trailer_center, state.trailer_orientation, TRAILER_COLLISION_BOX, COLORS.target_box)
+    end
+
+    draw_marker(surface, accepted_center, COLORS.trailer_center, 0.10)
+    if state then
+      draw_marker(surface, state.hitch, COLORS.hitch, 0.13)
+      draw_marker(surface, state.trailer_axle, COLORS.axle, 0.13)
+      rendering.draw_text{
+        text = string.format("%s hitch: %.1f deg", index == 1 and "A" or "B", hitch_angle_degrees(tow_orientation, state.trailer_orientation)),
+        surface = surface,
+        target = {
+          x = accepted_center.x,
+          y = accepted_center.y - 2.2
+        },
+        color = COLORS.text,
+        scale = DEBUG_TEXT_SCALE,
+        alignment = "center",
+        time_to_live = DEBUG_TIME_TO_LIVE
+      }
+      tow_orientation = state.trailer_orientation
+    end
+  end
 end
 
 local function render_blocked_debug(link, state)
-  if not DEBUG_RENDERING then
+  if not DEBUG_RENDERING or not state then
     return
   end
 
@@ -194,13 +261,14 @@ local function render_blocked_debug(link, state)
 end
 
 local function render_blocked_diagnostic(link, state, diagnostic)
-  if not DEBUG_RENDERING or not diagnostic then
+  if not DEBUG_RENDERING or not diagnostic or not state then
     return
   end
 
   rendering.draw_text{
     text = string.format(
-      "substep %d/%d  check:%s  can_place:%s  teleport:%s",
+      "segment %d  substep %d/%d  check:%s  can_place:%s  teleport:%s",
+      diagnostic.segment_index or 0,
       diagnostic.failed_step or 0,
       diagnostic.steps or 0,
       diagnostic.check_type or PROXY_BUILD_CHECK_TYPE_NAME,
@@ -236,12 +304,12 @@ local function create_collision_proxy(surface, force, position, orientation)
   return proxy
 end
 
-local function move_proxy_substepped(link, target_position, target_orientation)
-  local proxy = link.collision_proxy
+local function move_proxy_substepped(segment, target_position, target_orientation)
+  local proxy = segment.collision_proxy
   local surface = proxy.surface
   local force = proxy.force
-  local start_position = copy_position(link.accepted_trailer_position or proxy.position)
-  local start_orientation = link.accepted_trailer_orientation or proxy.orientation
+  local start_position = copy_position(segment.accepted_trailer_position or proxy.position)
+  local start_orientation = segment.accepted_trailer_orientation or proxy.orientation
   local steps = substep_count(start_position, start_orientation, target_position, target_orientation)
 
   proxy.orientation = start_orientation
@@ -303,26 +371,48 @@ local function can_place_collision_proxy(surface, force, position, orientation)
   }
 end
 
+local function segment_fallback_hitch(link, index)
+  if index == 1 then
+    return physics.position_behind(link.head, physics.HEAD_TO_HITCH_DISTANCE)
+  end
+
+  local previous = link.trailers[index - 1]
+  if previous then
+    local position = previous.accepted_trailer_position or previous.trailer.position
+    local orientation = previous.accepted_trailer_orientation or previous.trailer_orientation or previous.trailer.orientation
+    return physics.trailer_rear_hitch_position(position, orientation)
+  end
+
+  return physics.position_behind(link.head, physics.HEAD_TO_HITCH_DISTANCE)
+end
+
 local function ensure_accepted_state(link)
   link.accepted_head_position = link.accepted_head_position or copy_position(link.head.position)
   link.accepted_head_orientation = link.accepted_head_orientation or link.head.orientation
-  link.accepted_hitch_position = link.accepted_hitch_position or link.previous_hitch_position or physics.position_behind(link.head, physics.HEAD_TO_HITCH_DISTANCE)
-  link.accepted_trailer_position = link.accepted_trailer_position or copy_position(link.trailer.position)
-  link.accepted_trailer_orientation = link.accepted_trailer_orientation or link.trailer_orientation or link.trailer.orientation
 
-  link.previous_hitch_position = link.accepted_hitch_position
-  link.trailer_orientation = link.accepted_trailer_orientation
+  for index, segment in ipairs(link.trailers) do
+    segment.accepted_hitch_position = segment.accepted_hitch_position or segment.previous_hitch_position or segment_fallback_hitch(link, index)
+    segment.accepted_trailer_position = segment.accepted_trailer_position or copy_position(segment.trailer.position)
+    segment.accepted_trailer_orientation = segment.accepted_trailer_orientation or segment.trailer_orientation or segment.trailer.orientation
+
+    segment.previous_hitch_position = segment.accepted_hitch_position
+    segment.trailer_orientation = segment.accepted_trailer_orientation
+  end
 end
 
-local function accept_state(link, state)
+local function accept_state(link, states)
   link.accepted_head_position = copy_position(link.head.position)
   link.accepted_head_orientation = link.head.orientation
-  link.accepted_hitch_position = copy_position(state.hitch)
-  link.accepted_trailer_position = copy_position(link.collision_proxy.position)
-  link.accepted_trailer_orientation = state.trailer_orientation
 
-  link.previous_hitch_position = link.accepted_hitch_position
-  link.trailer_orientation = link.accepted_trailer_orientation
+  for index, segment in ipairs(link.trailers) do
+    local state = states[index]
+    segment.accepted_hitch_position = copy_position(state.hitch)
+    segment.accepted_trailer_position = copy_position(segment.collision_proxy.position)
+    segment.accepted_trailer_orientation = state.trailer_orientation
+
+    segment.previous_hitch_position = segment.accepted_hitch_position
+    segment.trailer_orientation = segment.accepted_trailer_orientation
+  end
 end
 
 local function restore_accepted_state(link)
@@ -332,60 +422,104 @@ local function restore_accepted_state(link)
   link.head.orientation = link.accepted_head_orientation
   link.head.speed = 0
 
-  if is_valid(link.collision_proxy) then
-    link.collision_proxy.orientation = link.accepted_trailer_orientation
-    link.collision_proxy.teleport(link.accepted_trailer_position, nil, false, false)
-    link.collision_proxy.speed = 0
+  for _, segment in ipairs(link.trailers) do
+    if is_valid(segment.collision_proxy) then
+      segment.collision_proxy.orientation = segment.accepted_trailer_orientation
+      segment.collision_proxy.teleport(segment.accepted_trailer_position, nil, false, false)
+      segment.collision_proxy.speed = 0
+    end
+
+    segment.trailer.teleport(segment.accepted_trailer_position, nil, false, false)
+    segment.trailer.orientation = segment.accepted_trailer_orientation
+    segment.trailer.speed = 0
+
+    segment.previous_hitch_position = segment.accepted_hitch_position
+    segment.trailer_orientation = segment.accepted_trailer_orientation
   end
-
-  link.trailer.teleport(link.accepted_trailer_position, nil, false, false)
-  link.trailer.orientation = link.accepted_trailer_orientation
-  link.trailer.speed = 0
-
-  link.previous_hitch_position = link.accepted_hitch_position
-  link.trailer_orientation = link.accepted_trailer_orientation
 end
 
-local function register_link(head, trailer, collision_proxy, initial)
+local function register_link(head, segments, variant)
   ensure_storage()
   storage.trailers[head.unit_number] = {
+    variant = variant,
     head = head,
-    trailer = trailer,
-    collision_proxy = collision_proxy,
-    previous_hitch_position = initial.hitch,
-    trailer_orientation = initial.trailer_orientation,
+    trailers = segments,
     accepted_head_position = copy_position(head.position),
-    accepted_head_orientation = head.orientation,
-    accepted_hitch_position = copy_position(initial.hitch),
-    accepted_trailer_position = copy_position(initial.trailer_center),
-    accepted_trailer_orientation = initial.trailer_orientation
+    accepted_head_orientation = head.orientation
   }
-  storage.trailers_by_trailer_unit_number[trailer.unit_number] = head.unit_number
-  storage.trailers_by_proxy_unit_number[collision_proxy.unit_number] = head.unit_number
+
+  for _, segment in ipairs(segments) do
+    storage.trailers_by_trailer_unit_number[segment.trailer.unit_number] = head.unit_number
+    storage.trailers_by_proxy_unit_number[segment.collision_proxy.unit_number] = head.unit_number
+  end
 end
 
-local function ensure_collision_proxy(head_unit_number, link)
-  if is_valid(link.collision_proxy) then
-    storage.trailers_by_proxy_unit_number[link.collision_proxy.unit_number] = head_unit_number
+local function ensure_collision_proxy(head_unit_number, link, segment)
+  if is_valid(segment.collision_proxy) then
+    storage.trailers_by_proxy_unit_number[segment.collision_proxy.unit_number] = head_unit_number
     return true
   end
 
-  if not can_place_collision_proxy(link.trailer.surface, link.trailer.force, link.trailer.position, link.trailer.orientation) then
+  if not can_place_collision_proxy(segment.trailer.surface, segment.trailer.force, segment.trailer.position, segment.trailer.orientation) then
     return false
   end
 
-  local proxy = create_collision_proxy(link.trailer.surface, link.trailer.force, link.trailer.position, link.trailer.orientation)
+  local proxy = create_collision_proxy(segment.trailer.surface, segment.trailer.force, segment.trailer.position, segment.trailer.orientation)
   if not proxy then
     return false
   end
 
-  link.collision_proxy = proxy
+  segment.collision_proxy = proxy
   storage.trailers_by_proxy_unit_number[proxy.unit_number] = head_unit_number
   ensure_accepted_state(link)
   return true
 end
 
-local function create_trailer_for_head(head)
+local function create_visible_trailer(surface, force, position, orientation)
+  local trailer = surface.create_entity{
+    name = TRAILER_NAME,
+    position = position,
+    force = force,
+    create_build_effect_smoke = false,
+    raise_built = true
+  }
+  if not trailer then
+    return nil
+  end
+
+  trailer.orientation = orientation
+  trailer.speed = 0
+  return trailer
+end
+
+local function create_segment(surface, force, initial)
+  if not can_place_collision_proxy(surface, force, initial.trailer_center, initial.trailer_orientation) then
+    return nil
+  end
+
+  local trailer = create_visible_trailer(surface, force, initial.trailer_center, initial.trailer_orientation)
+  if not trailer then
+    return nil
+  end
+
+  local collision_proxy = create_collision_proxy(surface, force, initial.trailer_center, initial.trailer_orientation)
+  if not collision_proxy then
+    trailer.destroy{raise_destroy = true}
+    return nil
+  end
+
+  return {
+    trailer = trailer,
+    collision_proxy = collision_proxy,
+    previous_hitch_position = copy_position(initial.hitch),
+    trailer_orientation = initial.trailer_orientation,
+    accepted_hitch_position = copy_position(initial.hitch),
+    accepted_trailer_position = copy_position(initial.trailer_center),
+    accepted_trailer_orientation = initial.trailer_orientation
+  }
+end
+
+local function create_trailers_for_head(head)
   if not is_valid(head) or not head.unit_number then
     return
   end
@@ -393,46 +527,97 @@ local function create_trailer_for_head(head)
     return
   end
 
-  local initial = physics.initial_state(head)
   local surface = head.surface
   local force = head.force
-  if not can_place_collision_proxy(surface, force, initial.trailer_center, initial.trailer_orientation) then
-    return
+  local segment_count = segment_count_for_head(head.name)
+  local segments = {}
+  local hitch = physics.position_behind(head, physics.HEAD_TO_HITCH_DISTANCE)
+  local orientation = head.orientation
+
+  for index = 1, segment_count do
+    local initial = physics.initial_state_from_hitch(hitch, orientation)
+    local segment = create_segment(surface, force, initial)
+    if not segment then
+      for _, created_segment in ipairs(segments) do
+        if is_valid(created_segment.trailer) then
+          created_segment.trailer.destroy{raise_destroy = true}
+        end
+        if is_valid(created_segment.collision_proxy) then
+          created_segment.collision_proxy.destroy{raise_destroy = true}
+        end
+      end
+      return
+    end
+
+    segments[index] = segment
+    hitch = physics.trailer_rear_hitch_position(initial.trailer_center, initial.trailer_orientation)
+    orientation = initial.trailer_orientation
   end
 
-  local trailer = surface.create_entity{
-    name = TRAILER_NAME,
-    position = initial.trailer_center,
-    force = force,
-    create_build_effect_smoke = false,
-    raise_built = true
+  register_link(head, segments, variant_for_head(head.name))
+end
+
+local function validate_link(head_unit_number, link)
+  migrate_link_shape(link)
+  if not is_valid(link.head) or not link.trailers then
+    if link.trailers then
+      destroy_link_entities(link)
+    end
+    remove_link(head_unit_number)
+    return false
+  end
+
+  for _, segment in ipairs(link.trailers) do
+    if not is_valid(segment.trailer) then
+      destroy_link_entities(link, segment.trailer)
+      remove_link(head_unit_number)
+      return false
+    end
+  end
+
+  return true
+end
+
+local function compute_states(link)
+  local states = {}
+  local tow = {
+    hitch = physics.position_behind(link.head, physics.HEAD_TO_HITCH_DISTANCE),
+    orientation = link.head.orientation,
+    speed = link.head.speed
   }
-  if not trailer then
-    return
+
+  for index, segment in ipairs(link.trailers) do
+    local state = physics.next_segment_state(segment, tow)
+    states[index] = state
+    tow = {
+      hitch = physics.trailer_rear_hitch_position(state.trailer_center, state.trailer_orientation),
+      orientation = state.trailer_orientation,
+      speed = link.head.speed
+    }
   end
 
-  local collision_proxy = create_collision_proxy(surface, force, initial.trailer_center, initial.trailer_orientation)
-  if not collision_proxy then
-    trailer.destroy{raise_destroy = true}
-    return
-  end
+  return states
+end
 
-  trailer.orientation = initial.trailer_orientation
-  trailer.speed = 0
-  register_link(head, trailer, collision_proxy, initial)
+local function link_surfaces_match(link)
+  local surface = link.head.surface
+  for _, segment in ipairs(link.trailers) do
+    if segment.trailer.surface ~= surface or segment.collision_proxy.surface ~= surface then
+      return false
+    end
+  end
+  return true
 end
 
 function manager.init()
   ensure_storage()
   for head_unit_number, link in pairs(storage.trailers) do
-    if not is_valid(link.head) or not is_valid(link.trailer) then
-      remove_link(head_unit_number)
-    elseif link.trailer.unit_number then
-      storage.trailers_by_trailer_unit_number[link.trailer.unit_number] = head_unit_number
-      ensure_collision_proxy(head_unit_number, link)
-      if is_valid(link.collision_proxy) then
-        ensure_accepted_state(link)
+    if validate_link(head_unit_number, link) then
+      for _, segment in ipairs(link.trailers) do
+        storage.trailers_by_trailer_unit_number[segment.trailer.unit_number] = head_unit_number
+        ensure_collision_proxy(head_unit_number, link, segment)
       end
+      ensure_accepted_state(link)
     end
   end
 end
@@ -444,8 +629,8 @@ function manager.on_built_entity(event)
     return
   end
 
-  if entity.name == HEAD_NAME then
-    create_trailer_for_head(entity)
+  if entity.name == HEAD_NAME or entity.name == DOUBLE_HEAD_NAME then
+    create_trailers_for_head(entity)
   elseif entity.name == TRAILER_NAME or entity.name == TRAILER_PROXY_NAME then
     entity.speed = 0
   end
@@ -458,27 +643,28 @@ function manager.on_entity_removed(event)
     return
   end
 
-  if entity.name == HEAD_NAME and entity.unit_number then
+  if (entity.name == HEAD_NAME or entity.name == DOUBLE_HEAD_NAME) and entity.unit_number then
     local link = storage.trailers[entity.unit_number]
-    if link and is_valid(link.trailer) then
-      link.trailer.destroy{raise_destroy = true}
-    end
-    if link and is_valid(link.collision_proxy) then
-      link.collision_proxy.destroy{raise_destroy = true}
+    if link then
+      destroy_link_entities(link, entity)
     end
     remove_link(entity.unit_number)
   elseif entity.name == TRAILER_NAME and entity.unit_number then
     local head_unit_number = storage.trailers_by_trailer_unit_number[entity.unit_number]
     if head_unit_number then
       local link = storage.trailers[head_unit_number]
-      if link and is_valid(link.collision_proxy) then
-        link.collision_proxy.destroy{raise_destroy = true}
+      if link then
+        destroy_link_entities(link, entity)
       end
       remove_link(head_unit_number)
     end
   elseif entity.name == TRAILER_PROXY_NAME and entity.unit_number then
     local head_unit_number = storage.trailers_by_proxy_unit_number[entity.unit_number]
     if head_unit_number then
+      local link = storage.trailers[head_unit_number]
+      if link then
+        destroy_link_entities(link, entity)
+      end
       remove_link(head_unit_number)
     end
   end
@@ -502,37 +688,64 @@ end
 function manager.on_tick()
   ensure_storage()
   for head_unit_number, link in pairs(storage.trailers) do
-    if not is_valid(link.head) or not is_valid(link.trailer) then
-      remove_link(head_unit_number)
-    elseif not ensure_collision_proxy(head_unit_number, link) then
-      local state = physics.next_state(link)
-      restore_accepted_state(link)
-      render_debug(link, state, true)
-      render_blocked_debug(link, state)
-      render_blocked_diagnostic(link, state, {
-        steps = 0,
-        failed_step = 0,
-        check_type = PROXY_BUILD_CHECK_TYPE_NAME,
-        can_place = false,
-        teleport = false
-      })
-    elseif link.head.surface ~= link.trailer.surface or link.head.surface ~= link.collision_proxy.surface then
-      remove_link(head_unit_number)
-    else
-      ensure_accepted_state(link)
-      local state = physics.next_state(link)
-      local moved, diagnostic = move_proxy_substepped(link, state.trailer_center, state.trailer_orientation)
-      if moved then
-        link.trailer.teleport(link.collision_proxy.position, nil, false, false)
-        link.trailer.orientation = state.trailer_orientation
-        link.trailer.speed = 0
-        accept_state(link, state)
-        render_debug(link, state, false)
-      else
+    if validate_link(head_unit_number, link) then
+      local proxies_ok = true
+      for _, segment in ipairs(link.trailers) do
+        if not ensure_collision_proxy(head_unit_number, link, segment) then
+          proxies_ok = false
+          break
+        end
+      end
+
+      if not proxies_ok then
+        local states = compute_states(link)
         restore_accepted_state(link)
-        render_debug(link, state, true)
-        render_blocked_debug(link, state)
-        render_blocked_diagnostic(link, state, diagnostic)
+        render_debug(link, states, true)
+        render_blocked_debug(link, states[1])
+        render_blocked_diagnostic(link, states[1], {
+          segment_index = 0,
+          steps = 0,
+          failed_step = 0,
+          check_type = PROXY_BUILD_CHECK_TYPE_NAME,
+          can_place = false,
+          teleport = false
+        })
+      elseif not link_surfaces_match(link) then
+        remove_link(head_unit_number)
+      else
+        ensure_accepted_state(link)
+        local states = compute_states(link)
+        local moved = true
+        local failed_diagnostic = nil
+        local failed_state = nil
+
+        for index, segment in ipairs(link.trailers) do
+          local state = states[index]
+          local segment_moved, diagnostic = move_proxy_substepped(segment, state.trailer_center, state.trailer_orientation)
+          if not segment_moved then
+            moved = false
+            failed_diagnostic = diagnostic
+            failed_diagnostic.segment_index = index
+            failed_state = state
+            break
+          end
+        end
+
+        if moved then
+          for index, segment in ipairs(link.trailers) do
+            local state = states[index]
+            segment.trailer.teleport(segment.collision_proxy.position, nil, false, false)
+            segment.trailer.orientation = state.trailer_orientation
+            segment.trailer.speed = 0
+          end
+          accept_state(link, states)
+          render_debug(link, states, false)
+        else
+          restore_accepted_state(link)
+          render_debug(link, states, true)
+          render_blocked_debug(link, failed_state)
+          render_blocked_diagnostic(link, failed_state, failed_diagnostic)
+        end
       end
     end
   end

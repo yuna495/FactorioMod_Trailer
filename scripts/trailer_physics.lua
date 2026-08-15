@@ -3,6 +3,7 @@ local physics = {}
 physics.HEAD_TO_HITCH_DISTANCE = 2.46
 physics.TRAILER_AXLE_TO_HITCH_DISTANCE = 8.94
 physics.TRAILER_CENTER_TO_HITCH_DISTANCE = 5.52
+physics.TRAILER_CENTER_TO_REAR_HITCH_DISTANCE = 5.52
 physics.TRAILER_LATERAL_RESPONSE = 0.95
 physics.MAX_HITCH_ANGLE_TURNS = 0.25
 physics.STATIONARY_HEAD_SPEED_THRESHOLD = 0.002
@@ -69,9 +70,25 @@ function physics.position_behind(entity, distance)
   }
 end
 
+function physics.position_behind_pose(position, orientation, distance)
+  local forward = vector_from_orientation(orientation)
+  return {
+    x = position.x - forward.x * distance,
+    y = position.y - forward.y * distance
+  }
+end
+
+function physics.trailer_rear_hitch_position(center, orientation)
+  return physics.position_behind_pose(center, orientation, physics.TRAILER_CENTER_TO_REAR_HITCH_DISTANCE)
+end
+
 function physics.initial_state(head)
   local hitch = physics.position_behind(head, physics.HEAD_TO_HITCH_DISTANCE)
-  local forward = vector_from_orientation(head.orientation)
+  return physics.initial_state_from_hitch(hitch, head.orientation)
+end
+
+function physics.initial_state_from_hitch(hitch, orientation)
+  local forward = vector_from_orientation(orientation)
   local center = {
     x = hitch.x - forward.x * physics.TRAILER_CENTER_TO_HITCH_DISTANCE,
     y = hitch.y - forward.y * physics.TRAILER_CENTER_TO_HITCH_DISTANCE
@@ -79,19 +96,20 @@ function physics.initial_state(head)
 
   return {
     hitch = hitch,
-    trailer_orientation = normalize_orientation(head.orientation),
+    trailer_orientation = normalize_orientation(orientation),
     trailer_center = center
   }
 end
 
-function physics.next_state(link)
-  local head = link.head
-  local hitch = physics.position_behind(head, physics.HEAD_TO_HITCH_DISTANCE)
-  local trailer_orientation = normalize_orientation(link.trailer_orientation or link.trailer.orientation)
-  local accepted_trailer_position = link.accepted_trailer_position or link.trailer.position
-  local accepted_hitch_position = link.accepted_hitch_position or link.previous_hitch_position
+function physics.next_segment_state(segment, tow)
+  local hitch = tow.hitch
+  local tow_orientation = normalize_orientation(tow.orientation)
+  local tow_speed = tow.speed or 0
+  local trailer_orientation = normalize_orientation(segment.trailer_orientation or segment.trailer.orientation)
+  local accepted_trailer_position = segment.accepted_trailer_position or segment.trailer.position
+  local accepted_hitch_position = segment.accepted_hitch_position or segment.previous_hitch_position
 
-  if accepted_hitch_position and math.abs(head.speed or 0) < physics.STATIONARY_HEAD_SPEED_THRESHOLD then
+  if accepted_hitch_position and math.abs(tow_speed) < physics.STATIONARY_HEAD_SPEED_THRESHOLD then
     local hitch_threshold_squared = physics.STATIONARY_HITCH_MOVEMENT_THRESHOLD * physics.STATIONARY_HITCH_MOVEMENT_THRESHOLD
     if distance_squared(hitch, accepted_hitch_position) < hitch_threshold_squared then
       return {
@@ -122,12 +140,12 @@ function physics.next_state(link)
     end
   end
 
-  local hitch_delta_from_head = shortest_delta_turns(head.orientation, next_orientation)
-  if math.abs(hitch_delta_from_head) > physics.MAX_HITCH_ANGLE_TURNS then
-    if hitch_delta_from_head > 0 then
-      next_orientation = normalize_orientation(head.orientation + physics.MAX_HITCH_ANGLE_TURNS)
+  local hitch_delta_from_tow = shortest_delta_turns(tow_orientation, next_orientation)
+  if math.abs(hitch_delta_from_tow) > physics.MAX_HITCH_ANGLE_TURNS then
+    if hitch_delta_from_tow > 0 then
+      next_orientation = normalize_orientation(tow_orientation + physics.MAX_HITCH_ANGLE_TURNS)
     else
-      next_orientation = normalize_orientation(head.orientation - physics.MAX_HITCH_ANGLE_TURNS)
+      next_orientation = normalize_orientation(tow_orientation - physics.MAX_HITCH_ANGLE_TURNS)
     end
   end
 
@@ -147,6 +165,14 @@ function physics.next_state(link)
     trailer_center = center,
     trailer_axle = axle
   }
+end
+
+function physics.next_state(link)
+  return physics.next_segment_state(link, {
+    hitch = physics.position_behind(link.head, physics.HEAD_TO_HITCH_DISTANCE),
+    orientation = link.head.orientation,
+    speed = link.head.speed
+  })
 end
 
 return physics
