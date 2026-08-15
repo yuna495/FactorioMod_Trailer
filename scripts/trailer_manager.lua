@@ -28,6 +28,12 @@ local MAX_PROXY_SUBSTEP_DISTANCE = 0.22
 local MAX_PROXY_SUBSTEPS = 64
 local PROXY_BUILD_CHECK_TYPE = defines.build_check_type.ghost_revive
 local PROXY_BUILD_CHECK_TYPE_NAME = "ghost_revive"
+local LINKED_INVENTORIES = {
+  defines.inventory.car_trunk,
+  defines.inventory.car_ammo,
+  defines.inventory.fuel,
+  defines.inventory.burnt_result
+}
 
 local HEAD_COLLISION_BOX = geometry.HEAD_COLLISION_BOX
 local TRAILER_COLLISION_BOX = geometry.TRAILER_COLLISION_BOX
@@ -51,10 +57,15 @@ local function ensure_storage()
   storage.trailers = storage.trailers or {}
   storage.trailers_by_trailer_unit_number = storage.trailers_by_trailer_unit_number or {}
   storage.trailers_by_proxy_unit_number = storage.trailers_by_proxy_unit_number or {}
+  storage.debug_rendering_cleared = storage.debug_rendering_cleared or false
 end
 
 local function is_valid(entity)
   return entity and entity.valid
+end
+
+local function is_mined_event(event)
+  return event.name == defines.events.on_player_mined_entity or event.name == defines.events.on_robot_mined_entity
 end
 
 local function copy_position(position)
@@ -129,15 +140,94 @@ local function remove_link(head_unit_number)
   storage.trailers[head_unit_number] = nil
 end
 
-local function destroy_link_entities(link, except_entity)
+local function transfer_inventory_to_buffer(entity, buffer)
+  if not is_valid(entity) or not buffer then
+    return
+  end
+
+  for _, inventory_index in ipairs(LINKED_INVENTORIES) do
+    local ok, inventory = pcall(function()
+      return entity.get_inventory(inventory_index)
+    end)
+    if ok and inventory and inventory.valid then
+      for slot_index = 1, #inventory do
+        local stack = inventory[slot_index]
+        if stack and stack.valid_for_read then
+          buffer.insert(stack)
+          stack.clear()
+        end
+      end
+    end
+  end
+end
+
+local function remove_hidden_trailer_item_from_buffer(buffer)
+  if buffer then
+    buffer.remove{name = TRAILER_NAME, count = 1}
+  end
+end
+
+local function return_head_item_to_buffer(link, mined_entity, buffer)
+  if not buffer or not is_valid(link.head) then
+    return
+  end
+  if mined_entity == link.head then
+    return
+  end
+  buffer.insert{name = link.head.name, count = 1}
+end
+
+local function destroy_link_entities(link, except_entity, return_to_buffer)
   migrate_link_shape(link)
+  local buffer = return_to_buffer
+
+  if buffer and is_valid(link.head) and link.head ~= except_entity then
+    transfer_inventory_to_buffer(link.head, buffer)
+  end
+  if is_valid(link.head) and link.head ~= except_entity then
+    link.head.destroy{raise_destroy = false}
+  end
+
   for _, segment in pairs(link.trailers) do
+    if buffer and is_valid(segment.trailer) and segment.trailer ~= except_entity then
+      transfer_inventory_to_buffer(segment.trailer, buffer)
+    end
     if is_valid(segment.trailer) and segment.trailer ~= except_entity then
       segment.trailer.destroy{raise_destroy = false}
     end
     if is_valid(segment.collision_proxy) and segment.collision_proxy ~= except_entity then
       segment.collision_proxy.destroy{raise_destroy = false}
     end
+  end
+end
+
+local function remove_whole_link_for_entity(entity, link, head_unit_number, buffer)
+  remove_link(head_unit_number)
+
+  if buffer then
+    remove_hidden_trailer_item_from_buffer(buffer)
+    return_head_item_to_buffer(link, entity, buffer)
+  end
+
+  destroy_link_entities(link, entity, buffer)
+end
+
+local function clear_debug_rendering()
+  if storage.debug_rendering_cleared then
+    return
+  end
+
+  pcall(function()
+    rendering.clear(script.mod_name)
+  end)
+  storage.debug_rendering_cleared = true
+end
+
+local function sync_debug_rendering_state()
+  if DEBUG_RENDERING then
+    storage.debug_rendering_cleared = false
+  else
+    clear_debug_rendering()
   end
 end
 
@@ -648,6 +738,7 @@ end
 
 function manager.init()
   ensure_storage()
+  sync_debug_rendering_state()
   sync_research_recipe_unlocks()
   for head_unit_number, link in pairs(storage.trailers) do
     if validate_link(head_unit_number, link) then
@@ -681,11 +772,12 @@ function manager.on_entity_removed(event)
     return
   end
 
+  local buffer = is_mined_event(event) and event.buffer or nil
+
   if is_head_name(entity.name) and entity.unit_number then
     local link = storage.trailers[entity.unit_number]
     if link then
-      remove_link(entity.unit_number)
-      destroy_link_entities(link, entity)
+      remove_whole_link_for_entity(entity, link, entity.unit_number, buffer)
     else
       remove_link(entity.unit_number)
     end
@@ -694,8 +786,7 @@ function manager.on_entity_removed(event)
     if head_unit_number then
       local link = storage.trailers[head_unit_number]
       if link then
-        remove_link(head_unit_number)
-        destroy_link_entities(link, entity)
+        remove_whole_link_for_entity(entity, link, head_unit_number, buffer)
       else
         remove_link(head_unit_number)
       end
@@ -705,8 +796,7 @@ function manager.on_entity_removed(event)
     if head_unit_number then
       local link = storage.trailers[head_unit_number]
       if link then
-        remove_link(head_unit_number)
-        destroy_link_entities(link, entity)
+        remove_whole_link_for_entity(entity, link, head_unit_number, buffer)
       else
         remove_link(head_unit_number)
       end
@@ -731,6 +821,7 @@ end
 
 function manager.on_tick()
   ensure_storage()
+  sync_debug_rendering_state()
   for head_unit_number, link in pairs(storage.trailers) do
     if validate_link(head_unit_number, link) then
       local proxies_ok = true

@@ -108,6 +108,8 @@ Confirmed from Factorio 2.x local base data and official API docs:
 - `LuaEntity.teleport(position, surface, raise_teleported, snap_to_grid, build_check_type)` is used to move the trailer.
 - `LuaSurface.can_place_entity{name=..., position=..., force=..., build_check_type=...}` can pre-check placement/collision.
 - `defines.events.on_player_driving_changed_state` is used to prevent players from driving the trailer entity.
+- `defines.events.on_player_mined_entity` and `defines.events.on_robot_mined_entity` provide a mining buffer that this mod uses to return the linked head item and linked vehicle inventories when any visible road-trailer part is mined.
+- Destroy events without a mining buffer, including death and `script_raised_destroy`, remove every linked road-trailer part without returning linked inventories.
 - `CollisionMask` is prototype-level data. The available documented options include `layers`, `not_colliding_with_itself`, and `colliding_with_tiles_only`; no entity-instance or specific two-entity-pair collision exclusion is used by this mod.
 
 Factorio orientation is a real orientation in turns: `0` is north, `0.25` is east, `0.5` is south, and values increase clockwise. The forward vector used by this mod is:
@@ -395,6 +397,19 @@ storage.trailers = {
 
 Invalid entities are removed from storage during tick processing and relevant destroy/mine events.
 
+When any visible road-trailer part is mined, the entire linked road vehicle is removed:
+
+- Mining a head removes all linked trailers and collision proxies.
+- Mining a visible trailer removes the linked head, every linked visible trailer, and every linked collision proxy.
+- The mined rig returns exactly one head item for the linked variant: `trailer-head`, `double-trailer-head`, or `triple-trailer-head`.
+- Hidden/internal cargo trailer items are not returned to the player.
+- Inventories from linked heads and linked visible cargo trailers are moved into the mining buffer so Factorio handles inventory overflow like normal mining.
+
+When any linked road-trailer part is destroyed rather than mined, the entire linked road vehicle is destroyed:
+
+- The linked head, all linked visible trailers, and all linked collision proxies are removed.
+- Inventories and fuel in the linked head and linked trailers are lost, matching destruction rather than mining.
+
 ## Kinematics
 
 Current geometry constants:
@@ -504,7 +519,7 @@ The mod uses `storage`, keeps LuaEntity references only for entities it owns, an
 
 ## Debugging
 
-Runtime debug rendering is enabled with a single local constant in `scripts/trailer_manager.lua`. When enabled, it draws short-lived rendering objects each tick:
+Runtime debug rendering is controlled with the single local constant `DEBUG_RENDERING` in `scripts/trailer_manager.lua`. When enabled, it draws short-lived rendering objects each tick:
 
 - rotated head collision-box outline in red,
 - rotated accepted trailer proxy collision-box outlines in blue,
@@ -516,4 +531,4 @@ Runtime debug rendering is enabled with a single local constant in `scripts/trai
 - per-segment hitch angle text.
 - blocked diagnostic text with the failing substep number, build check type, `can_place_entity` result, and `teleport` result.
 
-If debug rendering is turned off, the rendering code returns before doing geometry work.
+If debug rendering is turned off, the rendering code does not draw new objects and clears existing rendering objects created by this mod during init/configuration change and the next tick. This keeps the switch available for future testing without leaving stale collision/debug overlays on screen.
