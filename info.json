@@ -1,10 +1,10 @@
 {
-  "name": "OreSink",
-  "version": "0.0.2",
-  "title": "Ore Sink",
+  "name": "Trailer",
+  "version": "0.1.0",
+  "title": "Trailer",
   "author": "yuna495",
   "factorio_version": "2.0",
-  "description": "",
+  "description": "Phase 1 free-driving semi-trailer prototype with kinematic cargo trailer following.",
   "dependencies": [
     "base >= 2.0"
   ]

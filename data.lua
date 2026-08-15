@@ -1,0 +1,4 @@
+require("prototypes.head")
+require("prototypes.trailer")
+require("prototypes.items")
+require("prototypes.recipes")
