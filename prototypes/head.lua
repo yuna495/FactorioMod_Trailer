@@ -2,6 +2,8 @@ local head = table.deepcopy(data.raw.car.car)
 local geometry = require("scripts.trailer_geometry")
 
 local WARRIG_SOUND_PATH = "__Trailer__/sounds/"
+local ICON_PATH = "__Trailer__/graphics/icon/"
+local MAP_SYMBOL_PATH = "__Trailer__/graphics/map_symbol/"
 local SEMI_HEAD_TUNING = {
   effectivity = 0.7,
   consumption = "2500kW",
@@ -13,6 +15,8 @@ local SEMI_HEAD_TUNING = {
 }
 local DOUBLE_HEAD_TUNING = table.deepcopy(SEMI_HEAD_TUNING)
 DOUBLE_HEAD_TUNING.weight = 32000
+local TRIPLE_HEAD_TUNING = table.deepcopy(SEMI_HEAD_TUNING)
+TRIPLE_HEAD_TUNING.weight = 44000
 
 local function warrig_body_stripes()
   local stripes = {}
@@ -63,25 +67,41 @@ local function warrig_exhaust_smoke()
   }
 end
 
+local function warrig_minimap(prefix)
+  return {
+    filename = MAP_SYMBOL_PATH .. prefix .. ".png",
+    flags = {"icon"},
+    size = {128, 128},
+    scale = 0.2
+  }
+end
+
+local function apply_head_tuning(prototype, tuning)
+  prototype.effectivity = tuning.effectivity
+  prototype.consumption = tuning.consumption
+  prototype.braking_power = tuning.braking_power
+  prototype.friction = tuning.friction
+  prototype.rotation_speed = tuning.rotation_speed
+  prototype.rotation_snap_angle = tuning.rotation_snap_angle
+  prototype.weight = tuning.weight
+end
+
 head.name = "trailer-head"
 head.localised_name = {"entity-name.trailer-head"}
 head.localised_description = {"entity-description.trailer-head"}
-head.icon = "__base__/graphics/icons/car.png"
+head.icon = ICON_PATH .. "icon.png"
+head.icon_size = 128
 head.minable = {mining_time = 0.5, result = "trailer-head"}
 head.collision_box = geometry.HEAD_COLLISION_BOX
 head.selection_box = geometry.HEAD_SELECTION_BOX
 head.collision_mask = geometry.LINKED_VEHICLE_COLLISION_MASK
-head.effectivity = SEMI_HEAD_TUNING.effectivity
-head.consumption = SEMI_HEAD_TUNING.consumption
-head.braking_power = SEMI_HEAD_TUNING.braking_power
-head.friction = SEMI_HEAD_TUNING.friction
-head.rotation_speed = SEMI_HEAD_TUNING.rotation_speed
-head.rotation_snap_angle = SEMI_HEAD_TUNING.rotation_snap_angle
-head.weight = SEMI_HEAD_TUNING.weight
+apply_head_tuning(head, SEMI_HEAD_TUNING)
 head.inventory_size = 20
 head.guns = nil
 head.render_layer = "object"
 head.energy_source.smoke = warrig_exhaust_smoke()
+head.minimap_representation = warrig_minimap("map_symbol")
+head.selected_minimap_representation = warrig_minimap("map_symbol_selected")
 head.sound_no_fuel = {filename = WARRIG_SOUND_PATH .. "engine-fail.ogg", volume = 0.5}
 head.stop_trigger = {
   {
@@ -119,12 +139,13 @@ double_head.name = "double-trailer-head"
 double_head.localised_name = {"entity-name.double-trailer-head"}
 double_head.localised_description = {"entity-description.double-trailer-head"}
 double_head.minable = {mining_time = 0.5, result = "double-trailer-head"}
-double_head.effectivity = DOUBLE_HEAD_TUNING.effectivity
-double_head.consumption = DOUBLE_HEAD_TUNING.consumption
-double_head.braking_power = DOUBLE_HEAD_TUNING.braking_power
-double_head.friction = DOUBLE_HEAD_TUNING.friction
-double_head.rotation_speed = DOUBLE_HEAD_TUNING.rotation_speed
-double_head.rotation_snap_angle = DOUBLE_HEAD_TUNING.rotation_snap_angle
-double_head.weight = DOUBLE_HEAD_TUNING.weight
+apply_head_tuning(double_head, DOUBLE_HEAD_TUNING)
 
-data:extend({head, double_head})
+local triple_head = table.deepcopy(head)
+triple_head.name = "triple-trailer-head"
+triple_head.localised_name = {"entity-name.triple-trailer-head"}
+triple_head.localised_description = {"entity-description.triple-trailer-head"}
+triple_head.minable = {mining_time = 0.5, result = "triple-trailer-head"}
+apply_head_tuning(triple_head, TRIPLE_HEAD_TUNING)
+
+data:extend({head, double_head, triple_head})

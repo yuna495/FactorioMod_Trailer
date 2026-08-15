@@ -449,12 +449,12 @@ data:extend({
     type = "recipe",
     name = RAIL_LOCOMOTIVE_NAME,
     localised_name = {"recipe-name." .. RAIL_LOCOMOTIVE_NAME},
-    enabled = true,
-    energy_required = 4,
+    enabled = false,
+    energy_required = 6,
     ingredients = {
-      {type = "item", name = "engine-unit", amount = 20},
-      {type = "item", name = "electronic-circuit", amount = 10},
-      {type = "item", name = "steel-plate", amount = 30}
+      {type = "item", name = "engine-unit", amount = 30},
+      {type = "item", name = "electronic-circuit", amount = 15},
+      {type = "item", name = "steel-plate", amount = 45}
     },
     results = {{type = "item", name = RAIL_LOCOMOTIVE_NAME, amount = 1}}
   },
@@ -462,12 +462,12 @@ data:extend({
     type = "recipe",
     name = RAIL_CARGO_WAGON_NAME,
     localised_name = {"recipe-name." .. RAIL_CARGO_WAGON_NAME},
-    enabled = true,
-    energy_required = 1,
+    enabled = false,
+    energy_required = 1.5,
     ingredients = {
-      {type = "item", name = "iron-gear-wheel", amount = 10},
-      {type = "item", name = "iron-plate", amount = 20},
-      {type = "item", name = "steel-plate", amount = 20}
+      {type = "item", name = "iron-gear-wheel", amount = 15},
+      {type = "item", name = "iron-plate", amount = 30},
+      {type = "item", name = "steel-plate", amount = 30}
     },
     results = {{type = "item", name = RAIL_CARGO_WAGON_NAME, amount = 1}}
   },
@@ -475,13 +475,13 @@ data:extend({
     type = "recipe",
     name = RAIL_FLUID_WAGON_NAME,
     localised_name = {"recipe-name." .. RAIL_FLUID_WAGON_NAME},
-    enabled = true,
-    energy_required = 1.5,
+    enabled = false,
+    energy_required = 2.25,
     ingredients = {
-      {type = "item", name = "iron-gear-wheel", amount = 10},
-      {type = "item", name = "steel-plate", amount = 16},
-      {type = "item", name = "pipe", amount = 8},
-      {type = "item", name = "storage-tank", amount = 1}
+      {type = "item", name = "iron-gear-wheel", amount = 15},
+      {type = "item", name = "steel-plate", amount = 24},
+      {type = "item", name = "pipe", amount = 12},
+      {type = "item", name = "storage-tank", amount = 2}
     },
     results = {{type = "item", name = RAIL_FLUID_WAGON_NAME, amount = 1}}
   },
@@ -489,7 +489,7 @@ data:extend({
     type = "recipe",
     name = ROAD_RAIL_PLANNER_NAME,
     localised_name = {"recipe-name." .. ROAD_RAIL_PLANNER_NAME},
-    enabled = true,
+    enabled = false,
     energy_required = 0.5,
     category = "crafting-with-fluid",
     ingredients = {

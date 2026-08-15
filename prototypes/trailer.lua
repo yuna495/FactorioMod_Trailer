@@ -2,6 +2,9 @@ local trailer = table.deepcopy(data.raw.car.car)
 local proxy = table.deepcopy(data.raw.car.car)
 local geometry = require("scripts.trailer_geometry")
 
+local ICON_PATH = "__Trailer__/graphics/icon/"
+local MAP_SYMBOL_PATH = "__Trailer__/graphics/map_symbol/"
+
 local function trailer_body_stripes()
   local stripes = {}
   for index = 0, 7 do
@@ -26,10 +29,20 @@ local function trailer_shadow_stripes()
   return stripes
 end
 
+local function wagon_minimap(prefix)
+  return {
+    filename = MAP_SYMBOL_PATH .. prefix .. ".png",
+    flags = {"icon"},
+    size = {30, 50},
+    scale = 0.5
+  }
+end
+
 trailer.name = "trailer-cargo"
 trailer.localised_name = {"entity-name.trailer-cargo"}
 trailer.localised_description = {"entity-description.trailer-cargo"}
-trailer.icon = "__base__/graphics/icons/steel-chest.png"
+trailer.icon = ICON_PATH .. "icon.png"
+trailer.icon_size = 128
 trailer.minable = {mining_time = 0.7, result = "trailer-cargo"}
 trailer.collision_box = geometry.TRAILER_COLLISION_BOX
 trailer.selection_box = geometry.TRAILER_SELECTION_BOX
@@ -45,6 +58,8 @@ trailer.weight = 4000
 trailer.inventory_size = 100
 trailer.guns = nil
 trailer.render_layer = "object"
+trailer.minimap_representation = wagon_minimap("wagon_map_symbol")
+trailer.selected_minimap_representation = wagon_minimap("wagon_map_symbol_selected")
 trailer.light = nil
 trailer.light_animation = nil
 trailer.turret_animation = nil
@@ -82,7 +97,8 @@ trailer.animation = {
 proxy.name = "trailer-cargo-collision-proxy"
 proxy.localised_name = {"entity-name.trailer-cargo"}
 proxy.localised_description = {"entity-description.trailer-cargo"}
-proxy.icon = "__base__/graphics/icons/steel-chest.png"
+proxy.icon = ICON_PATH .. "icon.png"
+proxy.icon_size = 128
 proxy.flags = {"not-on-map", "not-blueprintable", "not-deconstructable", "hide-alt-info"}
 proxy.hidden = true
 proxy.selectable_in_game = false

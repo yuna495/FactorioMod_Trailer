@@ -9,6 +9,7 @@ This mod implements Factorio 2.x free-driving semi-trailer prototypes:
 - A hidden collision proxy entity based on the base game's `car` prototype.
 - One fixed trailer behind a `trailer-head` Semi-Trailer.
 - Two fixed trailers behind a `double-trailer-head` Double-Trailer.
+- Three fixed trailers behind a `triple-trailer-head` Triple-Trailer.
 - A rail-only War Rig locomotive, cargo wagon, and fluid wagon based on the base game's rolling stock prototypes.
 - A dedicated road-rail planner and rail prototypes that use the `kj_vehicles` road-rail artwork while remaining compatible with normal rolling stock.
 - Automatic trailer creation behind the head when a trailer head is built.
@@ -16,7 +17,7 @@ This mod implements Factorio 2.x free-driving semi-trailer prototypes:
 - Persistent head/trailer linkage stored in `storage`.
 - Trailer cargo inventory exposed through the visible cargo vehicle inventory so inserters and players can load and unload it.
 
-Phase 2 does not implement GUI coupling, road/rail conversion, coupling/uncoupling for road trailers, manual cargo-only road placement, road fluid trailers, tank trailers, triple trailers, automatic driving for road trailers, technology-tree integration, or complete native vehicle impact behavior.
+Phase 2 does not implement GUI coupling, road/rail conversion, coupling/uncoupling for road trailers, manual cargo-only road placement, road fluid trailers, tank trailers, automatic driving for road trailers, or complete native vehicle impact behavior.
 
 ## Reference Findings
 
@@ -131,6 +132,8 @@ Prototype name: `trailer-head`
 - Uses copied `kj_warrig` War Rig graphics in Phase 1
 - Uses copied `kj_warrig` War Rig engine, brake, no-fuel, and door-close sounds in Phase 1
 - Emits War Rig-style black exhaust smoke from two rear exhaust positions while burning fuel
+- Uses `graphics/icon/icon.png` for its entity and item icons.
+- Uses the War Rig minimap images `graphics/map_symbol/map_symbol.png` and `graphics/map_symbol/map_symbol_selected.png`.
 - Has a moderate trunk inventory
 - Uses the same War Rig visual size as `trailer-rail-locomotive` so road and rail heads have a matching size feel.
 
@@ -144,11 +147,27 @@ Prototype name: `double-trailer-head`
 - Deep copy of the configured `trailer-head` prototype.
 - Uses the same sprite, collision, engine, fuel, acceleration, braking, rotation, exhaust, and sound settings as `trailer-head`.
 - Uses a heavier Double-specific head weight so the Double-Trailer handles differently from the Semi-Trailer.
+- Uses `graphics/icon/icon.png` for its entity and item icons.
+- Uses the War Rig minimap images `graphics/map_symbol/map_symbol.png` and `graphics/map_symbol/map_symbol_selected.png`.
 - `name`, `localised_name`, `localised_description`, and `minable.result` are changed for the Double-Trailer item.
 - Player-drivable.
 - Automatically creates two visible cargo trailers and two hidden collision proxies when built.
 
 The in-game display name for `double-trailer-head` is `Double-Trailer`.
+
+### Triple Trailer Head
+
+Prototype name: `triple-trailer-head`
+
+- Type: `car`
+- Deep copy of the configured `trailer-head` prototype.
+- Uses the same sprite, collision, engine, fuel, acceleration, braking, rotation, exhaust, sound, icon, and minimap settings as `trailer-head`.
+- Uses a heavier Triple-specific head weight so the Triple-Trailer scales from the Double-Trailer in the same way the Double-Trailer scales from the Semi-Trailer.
+- `name`, `localised_name`, `localised_description`, and `minable.result` are changed for the Triple-Trailer item.
+- Player-drivable.
+- Automatically creates three visible cargo trailers and three hidden collision proxies when built.
+
+The in-game display name for `triple-trailer-head` is `Triple-Trailer`.
 
 ### Trailer Cargo
 
@@ -164,6 +183,7 @@ Prototype name: `trailer-cargo`
 - Uses a longer selection footprint than the head.
 - Has a full trailer-sized interaction collision box with an empty collision mask. It is the stable visual/inventory entity and is not responsible for obstacle blocking.
 - Inserters interact with the visible cargo entity's inventory through that full interaction box.
+- Uses the wagon minimap images `graphics/map_symbol/wagon_map_symbol.png` and `graphics/map_symbol/wagon_map_symbol_selected.png`.
 
 ### Trailer Cargo Collision Proxy
 
@@ -180,8 +200,16 @@ Prototype name: `trailer-cargo-collision-proxy`
 
 - `trailer-head` places `trailer-head` and is displayed as `Semi-Trailer`.
 - `double-trailer-head` places `double-trailer-head` and is displayed as `Double-Trailer`.
-- `trailer-cargo` remains hidden and is created only by script.
-- `double-trailer-head` has an enabled temporary Phase 2 test recipe using ordinary intermediate items.
+- `triple-trailer-head` places `triple-trailer-head` and is displayed as `Triple-Trailer`.
+- Road Semi-Trailer, Double-Trailer, and Triple-Trailer items use `graphics/icon/icon.png`.
+- `trailer-cargo` remains an internal hidden item and is created only by script; users should not see or craft it as a normal item.
+- Road recipes are disabled by default and unlocked by technology.
+- `trailer-head` is unlocked by `trailer-head`.
+- `double-trailer-head` is unlocked by `double-trailer-head`.
+- `triple-trailer-head` is unlocked by `triple-trailer-head`.
+- `trailer-head` recipe costs 8 engine units, 20 iron gear wheels, and 20 steel plates.
+- `double-trailer-head` recipe costs 12 engine units, 30 iron gear wheels, and 30 steel plates.
+- `triple-trailer-head` recipe costs 16 engine units, 40 iron gear wheels, and 40 steel plates.
 
 ### Rail War Rig Locomotive
 
@@ -267,10 +295,10 @@ Rail fluid wagon adopted values:
 - Rail item prototypes are `item-with-entity-data` so locomotive/wagon entity data is preserved.
 - Rail item stack size is `5`, matching vanilla locomotive and wagon items.
 - Rail items use subgroup `train-transport` and orders after vanilla rolling stock.
-- Rail recipes are enabled for Phase 2 testing and are not connected to a technology tree.
-- `trailer-rail-locomotive` recipe uses the base locomotive recipe ingredients.
-- `trailer-rail-cargo-wagon` recipe uses the base cargo wagon recipe ingredients.
-- `trailer-rail-fluid-wagon` recipe uses the base fluid wagon recipe ingredients.
+- Rail recipes are disabled by default and unlocked by `trailer-rail-war-rig`.
+- `trailer-rail-locomotive` recipe costs about 1.5x the base locomotive recipe: 30 engine units, 15 electronic circuits, and 45 steel plates.
+- `trailer-rail-cargo-wagon` recipe costs about 1.5x the base cargo wagon recipe: 15 iron gear wheels, 30 iron plates, and 30 steel plates.
+- `trailer-rail-fluid-wagon` recipe costs about 1.5x the base fluid wagon recipe: 15 iron gear wheels, 24 steel plates, 12 pipes, and 2 storage tanks.
 
 ### Dedicated Road Rails
 
@@ -291,7 +319,28 @@ Dedicated road rails:
 - Do not restrict the Rail War Rig to only those rails; standard Factorio rails remain usable.
 - Do not add road/rail mode conversion or any runtime script handling.
 - Use Factorio 2.x rail prototype types: `straight-rail`, `half-diagonal-rail`, `curved-rail-a`, and `curved-rail-b`.
-- Are crafted from stone brick, concrete, and water using an enabled temporary Phase 2 recipe.
+- Are crafted from stone brick, concrete, and water.
+- The road-rail planner recipe is disabled by default and unlocked by `trailer-rail-war-rig`.
+
+### Technologies
+
+Technology icon: `graphics/technology/technology.png`
+
+Technology prototypes:
+
+- `trailer-head`
+- `double-trailer-head`
+- `triple-trailer-head`
+- `trailer-rail-war-rig`
+
+Research:
+
+- `trailer-head` is displayed as `Semi-Trailer`, requires `automobilism`, costs 100 automation + logistic science packs, and unlocks the `trailer-head` recipe.
+- `double-trailer-head` is displayed as `Double-Trailer`, requires `trailer-head`, costs 200 automation + logistic science packs, and unlocks the `double-trailer-head` recipe.
+- `triple-trailer-head` is displayed as `Triple-Trailer`, requires `double-trailer-head`, costs 300 automation + logistic science packs, and unlocks the `triple-trailer-head` recipe.
+- `trailer-rail-war-rig` is displayed as `Rail War Rig`, requires `automated-rail-transportation` and `fluid-wagon`, costs 250 automation + logistic science packs, and unlocks `trailer-rail-locomotive`, `trailer-rail-cargo-wagon`, `trailer-rail-fluid-wagon`, and `trailer-road-rails`.
+
+The technology stage does not create persistent runtime state. Existing saves keep their entities and storage links. On init/configuration change, each force's Trailer recipes are synchronized to the researched state of these technologies so older saves do not keep the previous temporary always-enabled recipes unless the matching technology is researched.
 
 ## Runtime State
 
@@ -300,7 +349,7 @@ Runtime linkage is stored with an explicit variant and segment list. New links u
 ```lua
 storage.trailers = {
   [head_unit_number] = {
-    variant = "single" or "double",
+    variant = "single" or "double" or "triple",
     head = LuaEntity,
     trailers = {
       [1] = {
@@ -369,8 +418,9 @@ Current trailer head tuning values:
 - Semi-Trailer rotation snap angle: `0.015`
 - Semi-Trailer weight: `20000`
 - Double-Trailer uses the same values except weight: `32000`
+- Triple-Trailer uses the same values except weight: `44000`
 
-The Double-Trailer uses a separate head weight instead of trying to sum trailer entity weights into the head. Factorio does not natively couple the scripted road trailer entities to the head as a single car mass, so setting `trailer-cargo.weight = 12000` would not make the driving head behave like an `8000 + 12000` or `8000 + 12000 + 12000` vehicle.
+The Double-Trailer and Triple-Trailer use separate head weights instead of trying to sum trailer entity weights into the head. Factorio does not natively couple the scripted road trailer entities to the head as a single car mass, so setting `trailer-cargo.weight = 12000` would not make the driving head behave like an `8000 + 12000`, `8000 + 12000 + 12000`, or `8000 + 12000 + 12000 + 12000` vehicle.
 
 Current prototype dimensions:
 
@@ -395,7 +445,7 @@ Each tick for registered linked vehicles:
 
 1. Validate head and all trailers in the variant.
 2. Compute Trailer A from the head rear hitch using the same kinematics as Phase 1.
-3. For Double-Trailer, compute Trailer B from Trailer A's rear hitch. Trailer B's maximum articulation compares Trailer A orientation against Trailer B orientation, not head orientation against Trailer B orientation.
+3. For Double-Trailer and Triple-Trailer, compute each following trailer from the previous trailer's rear hitch. Each following trailer's maximum articulation compares the previous segment orientation against the current segment orientation, not the head orientation against every segment.
 4. Move all hidden collision proxies from their last accepted poses to the reconstructed target poses in substeps. Each substep compares `LuaSurface.can_place_entity` and `LuaEntity.teleport` for the proxy at the step position and rounded direction, using `defines.build_check_type.ghost_revive` for both calls.
 5. Accept the tick only if every proxy movement succeeds.
 6. If every proxy succeeds, teleport the visible trailers to the accepted proxy positions and assign all orientations.
@@ -443,7 +493,7 @@ Known limitations:
 - Scripted trailer proxy movement may not produce native car impact damage, tree destruction, or vehicle damage.
 - Proxy movement is substepped from the last accepted pose to reduce teleport tunneling. If a substep fails, the whole tick is rejected; partial substep progress is not accepted.
 - `LuaEntity.teleport` is treated as authoritative for movement. `can_place_entity` is diagnostic only, because in-game testing showed `can_place=false` and `teleport=true` near nearby objects where the proxy could actually move. When debug rendering is enabled, blocked ticks show the failing substep plus both results.
-- On proxy movement failure, head movement is rolled back to the last accepted head pose and `head.speed` is set to `0`. In Double-Trailer links, proxy movement is atomic across Trailer A and Trailer B: a failure for either proxy rejects the whole vehicle update and restores both trailers.
+- On proxy movement failure, head movement is rolled back to the last accepted head pose and `head.speed` is set to `0`. In multi-trailer links, proxy movement is atomic across all trailer segments: a failure for any proxy rejects the whole vehicle update and restores every trailer.
 - Debug rendering shows a short-lived `Trailer blocked` text when the proxy teleport fails.
 
 Phase 2 should investigate native impact damage and obstacle destruction behavior.

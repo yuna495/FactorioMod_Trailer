@@ -5,9 +5,21 @@ local manager = {}
 
 local HEAD_NAME = "trailer-head"
 local DOUBLE_HEAD_NAME = "double-trailer-head"
+local TRIPLE_HEAD_NAME = "triple-trailer-head"
 local TRAILER_NAME = "trailer-cargo"
 local TRAILER_PROXY_NAME = "trailer-cargo-collision-proxy"
-local DEBUG_RENDERING = true
+local TECHNOLOGY_UNLOCKS = {
+  ["trailer-head"] = {"trailer-head"},
+  ["double-trailer-head"] = {"double-trailer-head"},
+  ["triple-trailer-head"] = {"triple-trailer-head"},
+  ["trailer-rail-war-rig"] = {
+    "trailer-rail-locomotive",
+    "trailer-rail-cargo-wagon",
+    "trailer-rail-fluid-wagon",
+    "trailer-road-rails"
+  }
+}
+local DEBUG_RENDERING = false
 
 local DEBUG_TIME_TO_LIVE = 2
 local DEBUG_LINE_WIDTH = 3
@@ -50,6 +62,9 @@ local function copy_position(position)
 end
 
 local function segment_count_for_head(head_name)
+  if head_name == TRIPLE_HEAD_NAME then
+    return 3
+  end
   if head_name == DOUBLE_HEAD_NAME then
     return 2
   end
@@ -57,10 +72,17 @@ local function segment_count_for_head(head_name)
 end
 
 local function variant_for_head(head_name)
+  if head_name == TRIPLE_HEAD_NAME then
+    return "triple"
+  end
   if head_name == DOUBLE_HEAD_NAME then
     return "double"
   end
   return "single"
+end
+
+local function is_head_name(name)
+  return name == HEAD_NAME or name == DOUBLE_HEAD_NAME or name == TRIPLE_HEAD_NAME
 end
 
 local function migrate_link_shape(link)
@@ -111,10 +133,10 @@ local function destroy_link_entities(link, except_entity)
   migrate_link_shape(link)
   for _, segment in pairs(link.trailers) do
     if is_valid(segment.trailer) and segment.trailer ~= except_entity then
-      segment.trailer.destroy{raise_destroy = true}
+      segment.trailer.destroy{raise_destroy = false}
     end
     if is_valid(segment.collision_proxy) and segment.collision_proxy ~= except_entity then
-      segment.collision_proxy.destroy{raise_destroy = true}
+      segment.collision_proxy.destroy{raise_destroy = false}
     end
   end
 end
@@ -504,7 +526,7 @@ local function create_segment(surface, force, initial)
 
   local collision_proxy = create_collision_proxy(surface, force, initial.trailer_center, initial.trailer_orientation)
   if not collision_proxy then
-    trailer.destroy{raise_destroy = true}
+    trailer.destroy{raise_destroy = false}
     return nil
   end
 
@@ -540,10 +562,10 @@ local function create_trailers_for_head(head)
     if not segment then
       for _, created_segment in ipairs(segments) do
         if is_valid(created_segment.trailer) then
-          created_segment.trailer.destroy{raise_destroy = true}
+          created_segment.trailer.destroy{raise_destroy = false}
         end
         if is_valid(created_segment.collision_proxy) then
-          created_segment.collision_proxy.destroy{raise_destroy = true}
+          created_segment.collision_proxy.destroy{raise_destroy = false}
         end
       end
       return
@@ -609,8 +631,24 @@ local function link_surfaces_match(link)
   return true
 end
 
+local function sync_research_recipe_unlocks()
+  for _, force in pairs(game.forces) do
+    for technology_name, recipe_names in pairs(TECHNOLOGY_UNLOCKS) do
+      local technology = force.technologies[technology_name]
+      local researched = technology and technology.researched or false
+      for _, recipe_name in ipairs(recipe_names) do
+        local recipe = force.recipes[recipe_name]
+        if recipe then
+          recipe.enabled = researched
+        end
+      end
+    end
+  end
+end
+
 function manager.init()
   ensure_storage()
+  sync_research_recipe_unlocks()
   for head_unit_number, link in pairs(storage.trailers) do
     if validate_link(head_unit_number, link) then
       for _, segment in ipairs(link.trailers) do
@@ -629,7 +667,7 @@ function manager.on_built_entity(event)
     return
   end
 
-  if entity.name == HEAD_NAME or entity.name == DOUBLE_HEAD_NAME then
+  if is_head_name(entity.name) then
     create_trailers_for_head(entity)
   elseif entity.name == TRAILER_NAME or entity.name == TRAILER_PROXY_NAME then
     entity.speed = 0
@@ -643,29 +681,35 @@ function manager.on_entity_removed(event)
     return
   end
 
-  if (entity.name == HEAD_NAME or entity.name == DOUBLE_HEAD_NAME) and entity.unit_number then
+  if is_head_name(entity.name) and entity.unit_number then
     local link = storage.trailers[entity.unit_number]
     if link then
+      remove_link(entity.unit_number)
       destroy_link_entities(link, entity)
+    else
+      remove_link(entity.unit_number)
     end
-    remove_link(entity.unit_number)
   elseif entity.name == TRAILER_NAME and entity.unit_number then
     local head_unit_number = storage.trailers_by_trailer_unit_number[entity.unit_number]
     if head_unit_number then
       local link = storage.trailers[head_unit_number]
       if link then
+        remove_link(head_unit_number)
         destroy_link_entities(link, entity)
+      else
+        remove_link(head_unit_number)
       end
-      remove_link(head_unit_number)
     end
   elseif entity.name == TRAILER_PROXY_NAME and entity.unit_number then
     local head_unit_number = storage.trailers_by_proxy_unit_number[entity.unit_number]
     if head_unit_number then
       local link = storage.trailers[head_unit_number]
       if link then
+        remove_link(head_unit_number)
         destroy_link_entities(link, entity)
+      else
+        remove_link(head_unit_number)
       end
-      remove_link(head_unit_number)
     end
   end
 end
