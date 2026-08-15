@@ -158,7 +158,10 @@ Current Phase 1 geometry constants:
 - head center to hitch: `2.46` tiles
 - trailer center to hitch: `5.52` tiles
 - trailer axle to hitch: `8.94` tiles
-- trailer lateral response: `0.8`
+- trailer lateral response: `0.95`
+- stationary head speed threshold: `0.002`
+- stationary hitch movement threshold: `0.002` tiles
+- trailer angle deadzone: `0.0002` turns
 
 Current trailer head tuning values:
 
@@ -193,18 +196,22 @@ Each tick for registered linked pairs:
 
 1. Validate head and trailer.
 2. Compute current hitch position behind the head.
-3. Derive the previously accepted trailer axle position from the accepted trailer center and orientation.
-4. Compute the ideal no-side-slip trailer orientation from the previous axle position toward the current hitch position.
-5. Blend the stored trailer orientation toward that no-side-slip orientation by `TRAILER_LATERAL_RESPONSE`.
-6. Clamp trailer/head angle difference to `MAX_HITCH_ANGLE_TURNS`.
-7. Reconstruct trailer center from hitch and trailer orientation.
-8. Derive the debug axle position from hitch and trailer orientation.
-9. Move the hidden collision proxy from the last accepted pose to the reconstructed target pose in substeps. Each substep compares `LuaSurface.can_place_entity` and `LuaEntity.teleport` for the proxy at the step position and rounded direction, using `defines.build_check_type.ghost_revive` for both calls.
-10. If every substep succeeds, teleport the visible trailer to the accepted proxy position and assign both orientations.
-11. If any substep fails, restore the head, proxy, visible trailer, hitch history, and trailer orientation to the last accepted pose; set head speed to `0`; show blocked debug text.
-12. Store the accepted head, hitch, proxy/trailer position, and trailer orientation for save/load continuity.
+3. If the head speed and hitch movement are both below the stationary thresholds, reuse the accepted trailer center and orientation without applying no-side-slip correction.
+4. Otherwise, derive the previously accepted trailer axle position from the accepted trailer center and orientation.
+5. Compute the ideal no-side-slip trailer orientation from the previous axle position toward the current hitch position.
+6. Blend the stored trailer orientation toward that no-side-slip orientation by `TRAILER_LATERAL_RESPONSE`.
+7. Ignore the blended angle delta if it is below `TRAILER_ANGLE_DEADZONE_TURNS`.
+8. Clamp trailer/head angle difference to `MAX_HITCH_ANGLE_TURNS`.
+9. Reconstruct trailer center from hitch and trailer orientation.
+10. Derive the debug axle position from hitch and trailer orientation.
+11. Move the hidden collision proxy from the last accepted pose to the reconstructed target pose in substeps. Each substep compares `LuaSurface.can_place_entity` and `LuaEntity.teleport` for the proxy at the step position and rounded direction, using `defines.build_check_type.ghost_revive` for both calls.
+12. If every substep succeeds, teleport the visible trailer to the accepted proxy position and assign both orientations.
+13. If any substep fails, restore the head, proxy, visible trailer, hitch history, and trailer orientation to the last accepted pose; set head speed to `0`; show blocked debug text.
+14. Store the accepted head, hitch, proxy/trailer position, and trailer orientation for save/load continuity.
 
 `TRAILER_LATERAL_RESPONSE` is a tire-side-slip resistance approximation. `1.0` means the trailer tries to satisfy the axle no-side-slip constraint immediately. Lower values allow more side drag/slip and smooth the response. Higher values make the trailer rotate toward the axle constraint more aggressively.
+
+The stationary thresholds prevent sub-tile Factorio vehicle settling and tiny floating-point orientation corrections from making the trailer visibly twitch around the hitch after stopping.
 
 The proxy substep target spacing is `0.22` tiles. The step count is based on the larger of center movement and angular sweep at the trailer collision-box half diagonal, capped at `64` substeps per linked trailer per tick to keep UPS cost bounded.
 

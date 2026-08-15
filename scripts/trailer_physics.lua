@@ -5,6 +5,9 @@ physics.TRAILER_AXLE_TO_HITCH_DISTANCE = 8.94
 physics.TRAILER_CENTER_TO_HITCH_DISTANCE = 5.52
 physics.TRAILER_LATERAL_RESPONSE = 0.95
 physics.MAX_HITCH_ANGLE_TURNS = 0.25
+physics.STATIONARY_HEAD_SPEED_THRESHOLD = 0.002
+physics.STATIONARY_HITCH_MOVEMENT_THRESHOLD = 0.002
+physics.TRAILER_ANGLE_DEADZONE_TURNS = 0.0002
 
 local FULL_TURN = math.pi * 2
 
@@ -14,6 +17,12 @@ end
 
 local function shortest_delta_turns(from_orientation, to_orientation)
   return (to_orientation - from_orientation + 0.5) % 1 - 0.5
+end
+
+local function distance_squared(a, b)
+  local dx = a.x - b.x
+  local dy = a.y - b.y
+  return dx * dx + dy * dy
 end
 
 local function orientation_from_vector(vector)
@@ -80,6 +89,23 @@ function physics.next_state(link)
   local hitch = physics.position_behind(head, physics.HEAD_TO_HITCH_DISTANCE)
   local trailer_orientation = normalize_orientation(link.trailer_orientation or link.trailer.orientation)
   local accepted_trailer_position = link.accepted_trailer_position or link.trailer.position
+  local accepted_hitch_position = link.accepted_hitch_position or link.previous_hitch_position
+
+  if accepted_hitch_position and math.abs(head.speed or 0) < physics.STATIONARY_HEAD_SPEED_THRESHOLD then
+    local hitch_threshold_squared = physics.STATIONARY_HITCH_MOVEMENT_THRESHOLD * physics.STATIONARY_HITCH_MOVEMENT_THRESHOLD
+    if distance_squared(hitch, accepted_hitch_position) < hitch_threshold_squared then
+      return {
+        hitch = hitch,
+        trailer_orientation = trailer_orientation,
+        trailer_center = {
+          x = accepted_trailer_position.x,
+          y = accepted_trailer_position.y
+        },
+        trailer_axle = trailer_axle_position(accepted_trailer_position, trailer_orientation)
+      }
+    end
+  end
+
   local previous_axle = trailer_axle_position(accepted_trailer_position, trailer_orientation)
 
   local axle_to_hitch = {
@@ -91,7 +117,9 @@ function physics.next_state(link)
   if axle_to_hitch.x * axle_to_hitch.x + axle_to_hitch.y * axle_to_hitch.y > 0.000001 then
     local no_slip_orientation = orientation_from_vector(axle_to_hitch)
     local angle_delta = shortest_delta_turns(trailer_orientation, no_slip_orientation) * physics.TRAILER_LATERAL_RESPONSE
-    next_orientation = normalize_orientation(trailer_orientation + angle_delta)
+    if math.abs(angle_delta) >= physics.TRAILER_ANGLE_DEADZONE_TURNS then
+      next_orientation = normalize_orientation(trailer_orientation + angle_delta)
+    end
   end
 
   local hitch_delta_from_head = shortest_delta_turns(head.orientation, next_orientation)
