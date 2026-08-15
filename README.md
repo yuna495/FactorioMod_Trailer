@@ -1,145 +1,114 @@
 # War Rig Transport
 
-Factorio 2.0向けのトレーラーMODです。
+![War Rig Transport](thumbnail.png)
 
-War Rig風の車両版トレーラーと、列車版のRail War Rigを追加します。車両版はヘッドを設置すると荷台が自動生成され、走行中はスクリプトで連結追従します。列車版は通常の機関車・貨車と同じ鉄道システム上で動作します。
+Factorio 2.0向けのWar Rig輸送MODです。
 
-## 要件
+自由走行できる **Semi / Double / Triple Trailer** と、通常の鉄道システムで使用できる **Rail War Rig**、貨物・流体トレーラー、道路風レールを追加します。
+
+## Features
+
+### Road Trailers
+
+車両版は通常の車と同じように自由に運転できます。ヘッドを設置すると必要な荷台が自動生成され、走行中は各荷台が前方車両を追従します。
+
+- **Semi-Trailer** — ヘッド + 荷台1台
+- **Double-Trailer** — ヘッド + 荷台2台
+- **Triple-Trailer** — ヘッド + 荷台3台
+- 各荷台は **100スロット** の独立したインベントリを持ちます
+- プレイヤーから直接アクセスでき、インサーターによる搬入・搬出にも対応します
+- Double / Tripleでは後続荷台が直前の荷台を追従するため、それぞれ独立して折れ曲がります
+
+### Rail War Rig
+
+列車版はFactorio標準のrolling stockとして動作します。
+
+- **Rail War Rig** — 通常燃料を使用する機関車
+- **Rail Cargo Trailer** — 100スロットの貨物貨車
+- **Rail Fluid Trailer** — 50,000 fluidの流体貨車
+- **Road rails** — War Rig向けの道路風レール
+
+Rail War Rigと各貨車は通常の線路でも使用できます。Road railsも通常の鉄道システムとして動作するため、専用の列車制御や独自スケジュールはありません。
+
+## Requirements
 
 - Factorio 2.0
-- MOD名: `War Rig Transport`
-- 現在のバージョン: `0.1.0`
+- Mod ID: `War_Rig_Transport`
+- Dependencies: `base >= 2.0`
 
-## 追加される主な要素
+## How to use
 
-### 車両版トレーラー
+### Road Trailers
 
-- `Semi-Trailer`
-  - プロトタイプ名: `trailer-head`
-  - ヘッド1台 + 荷台1台
-- `Double-Trailer`
-  - プロトタイプ名: `double-trailer-head`
-  - ヘッド1台 + 荷台2台
-- `Triple-Trailer`
-  - プロトタイプ名: `triple-trailer-head`
-  - ヘッド1台 + 荷台3台
+1. `Automobilism` を研究します。
+2. `Semi-Trailer` を研究して製作します。
+3. Semi-Trailerを設置すると荷台が自動生成されます。
+4. 荷台へプレイヤーまたはインサーターでアイテムを積み込みます。
+5. さらに長い編成が必要なら、`Double-Trailer`、`Triple-Trailer` を順に研究します。
 
-荷台は内部的には `trailer-cargo` として生成されますが、通常のクラフト対象としてユーザーに見せるためのアイテムではありません。ヘッドを設置すると必要な荷台と衝突判定用プロキシが自動で作られます。
+荷台を個別にクラフトして連結する方式ではありません。Semi / Double / Tripleはそれぞれ独立した車両アイテムです。
 
-### 列車版 Rail War Rig
+### Rail War Rig
 
-- `Rail War Rig`
-  - プロトタイプ名: `trailer-rail-locomotive`
-  - 通常の燃料で走る機関車
-- `Rail Cargo Trailer`
-  - プロトタイプ名: `trailer-rail-cargo-wagon`
-  - 貨物用のWar Rig風貨車
-- `Rail Fluid Trailer`
-  - プロトタイプ名: `trailer-rail-fluid-wagon`
-  - 流体用のWar Rig風貨車
-- `Road rails`
-  - プロトタイプ名: `trailer-road-rails`
-  - 道路風の専用線路
+1. バニラの鉄道技術を進め、`Automated Rail Transportation` と `Fluid Wagon` を研究します。
+2. `Rail War Rig` を研究します。
+3. Rail War Rig、Rail Cargo Trailer、Rail Fluid Trailer、Road railsがまとめて解禁されます。
+4. 通常の機関車・貨車と同じ方法で線路上へ配置し、列車を編成します。
 
-Rail War Rigは専用線路だけでなく、通常の線路上も走行できます。専用線路は主に見た目を合わせるためのものです。
+## Research
 
-## 研究
+| Technology | Prerequisites | Cost | Unlocks |
+| --- | --- | --- | --- |
+| Semi-Trailer | Automobilism | Automation + Logistic ×100 | Semi-Trailer |
+| Double-Trailer | Semi-Trailer | Automation + Logistic ×200 | Double-Trailer |
+| Triple-Trailer | Double-Trailer | Automation + Logistic ×300 | Triple-Trailer |
+| Rail War Rig | Automated Rail Transportation + Fluid Wagon | Automation + Logistic ×250 | Locomotive, Cargo Trailer, Fluid Trailer, Road rails |
 
-- `Semi-Trailer`
-  - 前提: `Automobilism`
-  - コスト: 赤緑サイエンス x100
-  - 解放: `Semi-Trailer`
-- `Double-Trailer`
-  - 前提: `Semi-Trailer`
-  - コスト: 赤緑サイエンス x200
-  - 解放: `Double-Trailer`
-- `Triple-Trailer`
-  - 前提: `Double-Trailer`
-  - コスト: 赤緑サイエンス x300
-  - 解放: `Triple-Trailer`
-- `Rail War Rig`
-  - 前提: `Automated Rail Transportation`、`Fluid Wagon`
-  - コスト: 赤緑サイエンス x250
-  - 解放: Rail War Rig機関車、貨車、流体貨車、Road rails
+## Recipes
 
-## レシピ概要
+| Item | Ingredients |
+| --- | --- |
+| Semi-Trailer | Engine unit ×8, Iron gear wheel ×20, Steel plate ×20 |
+| Double-Trailer | Engine unit ×12, Iron gear wheel ×30, Steel plate ×30 |
+| Triple-Trailer | Engine unit ×16, Iron gear wheel ×40, Steel plate ×40 |
+| Rail War Rig | Engine unit ×30, Electronic circuit ×15, Steel plate ×45 |
+| Rail Cargo Trailer | Iron gear wheel ×15, Iron plate ×30, Steel plate ×30 |
+| Rail Fluid Trailer | Iron gear wheel ×15, Steel plate ×24, Pipe ×12, Storage tank ×2 |
 
-### 車両版
+## Road Trailer behavior
 
-- `Semi-Trailer`
-  - Engine unit x8
-  - Iron gear wheel x20
-  - Steel plate x20
-- `Double-Trailer`
-  - Engine unit x12
-  - Iron gear wheel x30
-  - Steel plate x30
-- `Triple-Trailer`
-  - Engine unit x16
-  - Iron gear wheel x40
-  - Steel plate x40
+Road Trailers use a hybrid implementation:
 
-### 列車版
+- The head uses Factorio's normal `car` physics.
+- Visible cargo trailers are separate scripted entities.
+- Trailer position and orientation are calculated every tick from the movement of the vehicle in front of them.
+- Hidden collision proxies provide obstacle collision for the trailers.
+- Trailer damage received through the proxy is reflected onto the visible cargo trailer.
+- Semi / Double / Triple share the same trailer-following system; their main differences are trailer count and head weight.
 
-列車版は純正の機関車・貨車・流体貨車の約1.5倍を目安にしています。
+Detailed implementation notes are in [SPEC.md](SPEC.md).
 
-- `Rail War Rig`
-  - Engine unit x30
-  - Electronic circuit x15
-  - Steel plate x45
-- `Rail Cargo Trailer`
-  - Iron gear wheel x15
-  - Iron plate x30
-  - Steel plate x30
-- `Rail Fluid Trailer`
-  - Iron gear wheel x15
-  - Steel plate x24
-  - Pipe x12
-  - Storage tank x2
+## Known limitations
 
-## 車両版の挙動
+- Road Trailers are not native physically-jointed vehicles; trailer articulation is script-controlled.
+- Native vehicle behavior such as impact damage, tree destruction, and vehicle-to-vehicle collision is not reproduced perfectly by the scripted trailer proxies.
+- Trailer entity weight does not automatically contribute to the head's native `car` mass, so Semi / Double / Triple use different head weights to approximate the heavier consists.
+- Road rails are visual variants of normal rails. Rail War Rig is not restricted to them.
+- Road Trailer removal/destruction behavior should be regression-tested when changing runtime linkage code because multiple entities are managed as one logical consist.
 
-車両版トレーラーは、ヘッドの位置・向き・速度をもとに荷台位置を毎tick計算します。
+## Development
 
-- ヘッドはFactorio標準の車両物理で動きます。
-- 荷台はスクリプトで追従します。
-- 荷台の衝突は、非表示の衝突プロキシで処理します。
-- 荷台へのダメージ判定も衝突プロキシで受け、対応する見える荷台の耐久力へ反映します。
-- セミ、ダブル、トリプルは同じ追従ロジックを使い、荷台数とヘッド重量で差を出しています。
-- 荷台のインベントリにはプレイヤーやインサーターがアクセスできます。
+Implementation details, prototype names, tuning constants, runtime storage layout, collision handling, and required in-game regression tests are documented in [SPEC.md](SPEC.md).
 
-## 撤去・破壊
+## License and credits
 
-車両版トレーラーはリンク単位で扱います。
+War Rig Transport is licensed under **[CC BY-NC-SA 4.0](LICENSE)**.
 
-- ヘッドを撤去すると、リンクされた全ての荷台と衝突プロキシも撤去されます。
-- 荷台を撤去しても、ヘッドを含めたリンク全体が撤去されます。
-- 撤去時は、ヘッドアイテムと各車両に入っていたアイテムが撤去バッファへ返却されます。
-- 荷台用の内部アイテムは返却されません。
-- 破壊時は、リンクされた全てのヘッド・荷台・衝突プロキシが破壊され、内部のアイテムはロストします。
+Vehicle graphics, icons, sounds, minimap assets, and road-rail artwork are derived from or redistributed from TheKingJo's Factorio mods:
 
-## デバッグ描画
+- `King Jo's War Rig Truck` (`kj_warrig`)
+- `King Jo's Vehicles` (`kj_vehicles`)
 
-`scripts/trailer_manager.lua` の `DEBUG_RENDERING` を切り替えることで、衝突判定やヒッチ位置などのデバッグ描画をON/OFFできます。
+The upstream material is also distributed under **CC BY-NC-SA 4.0**. Detailed attribution and the list of reused files are documented in [THIRD_PARTY_LICENSES.md](THIRD_PARTY_LICENSES.md).
 
-- `true`: 衝突枠、ヒッチ、車軸、詰まり診断を描画
-- `false`: 新しいデバッグ描画を行わず、既存の描画もクリア
-
-通常プレイでは `false` 推奨です。
-
-## 既知の制限
-
-- 車両版トレーラーは完全なネイティブ連結車両ではなく、荷台追従はスクリプト制御です。
-- ネイティブ車両と同等の衝突ダメージ、木のなぎ倒し、車両衝突挙動はまだ完全には実装していません。
-- 荷台は車両本体と別エンティティのため、荷台重量はヘッドのネイティブ車両物理には直接加算されません。
-- Road railsは見た目用の専用線路で、Rail War Rig専用の走行制限はありません。
-
-## ライセンスと素材
-
-War Rig関連素材とRoad rails関連素材は、TheKingJo氏のMODを参照・利用しています。
-
-- `kj_warrig`
-- `kj_vehicles`
-- ライセンス: CC BY-NC-SA 4.0
-
-詳細は `THIRD_PARTY_LICENSES.md` を参照してください。
+War Rig Transport is an independent derivative project and is not endorsed by the original mod authors.
