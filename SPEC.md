@@ -31,6 +31,25 @@ Cargo trailer graphics copied into this mod:
 
 Copied graphics are unmodified.
 
+War Rig sounds copied into this mod:
+
+- `sounds/brakes.ogg`
+- `sounds/door-close.ogg`
+- `sounds/engine-fail.ogg`
+- `sounds/engine-start.ogg`
+- `sounds/engine-stop.ogg`
+- `sounds/engine.ogg`
+
+Copied sounds are unmodified.
+
+`Reference/kj_vehicles_2.1.11` contains the active War Rig car prototype integration used by `kj_warrig`. The transferred head audiovisual behavior is based on `prototypes/entities/warrig.lua`, `prototypes/entities.lua`, `prototypes/items.lua`, and `utils.lua`:
+
+- `working_sound` keeps the base car driving sound and replaces the idle engine layer with `engine.ogg`.
+- engine start/stop/no-fuel sounds use the copied `engine-start.ogg`, `engine-stop.ogg`, and `engine-fail.ogg`.
+- braking and door close sounds use the copied `brakes.ogg` and `door-close.ogg`.
+- exhaust smoke uses a local `trailer-warrig-smoke` prototype with the same black trivial-smoke parameters as `kj_warrig_smoke`.
+- exhaust emission positions match the War Rig source positions at `{-1.25, 2}` and `{1.25, 2}`.
+
 `Reference/trailer_simu` contains a Python/Pygame kinematic model. The transferred behavior is based on:
 
 - hitch/kingpin position behind the head,
@@ -75,7 +94,10 @@ Prototype name: `trailer-head`
 - Based on a deep copy of base `data.raw.car.car`
 - Player-drivable
 - Burner-fueled like the base car
+- Keeps the base car fuel categories and fuel inventory behavior so vanilla fuels such as coal and rocket fuel remain usable.
 - Uses copied `kj_warrig` War Rig graphics in Phase 1
+- Uses copied `kj_warrig` War Rig engine, brake, no-fuel, and door-close sounds in Phase 1
+- Emits War Rig-style black exhaust smoke from two rear exhaust positions while burning fuel
 - Has a moderate trunk inventory
 
 ### Trailer Cargo

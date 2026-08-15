@@ -1,7 +1,7 @@
 local geometry = {}
 
 geometry.HEAD_COLLISION_BOX = {{-0.96, -2.15}, {0.96, 2.15}}
-geometry.HEAD_SELECTION_BOX = {{-1.15, -2.35}, {1.15, 2.35}}
+geometry.HEAD_SELECTION_BOX = {{-1, -2.35}, {1, 2.35}}
 
 geometry.EMPTY_COLLISION_MASK = {layers = {}}
 

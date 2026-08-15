@@ -1,6 +1,8 @@
 local head = table.deepcopy(data.raw.car.car)
 local geometry = require("scripts.trailer_geometry")
 
+local WARRIG_SOUND_PATH = "__Trailer__/sounds/"
+
 local function warrig_body_stripes()
   local stripes = {}
   for index = 0, 15 do
@@ -11,6 +13,43 @@ local function warrig_body_stripes()
     }
   end
   return stripes
+end
+
+local function warrig_working_sound()
+  local main_sounds = table.deepcopy(data.raw.car.car.working_sound.main_sounds)
+  main_sounds[2].sound = {filename = WARRIG_SOUND_PATH .. "engine.ogg", volume = 0.7}
+  main_sounds[2].fade_in_ticks = 90
+  main_sounds[2].activity_to_volume_modifiers.multiplier = 1.5
+  main_sounds[2].activity_to_volume_modifiers.minimum = 0.5
+
+  return {
+    main_sounds = main_sounds,
+    activate_sound = {filename = WARRIG_SOUND_PATH .. "engine-start.ogg", volume = 0.7},
+    deactivate_sound = {filename = WARRIG_SOUND_PATH .. "engine-stop.ogg", volume = 0.7}
+  }
+end
+
+local function warrig_exhaust_smoke()
+  return {
+    {
+      name = "trailer-warrig-smoke",
+      deviation = {0.25, 0.25},
+      frequency = 100,
+      height = 2.75,
+      position = {-1.25, 2},
+      starting_frame = 0,
+      starting_frame_deviation = 60
+    },
+    {
+      name = "trailer-warrig-smoke",
+      deviation = {0.25, 0.25},
+      frequency = 100,
+      height = 2.75,
+      position = {1.25, 2},
+      starting_frame = 0,
+      starting_frame_deviation = 60
+    }
+  }
 end
 
 head.name = "trailer-head"
@@ -25,6 +64,21 @@ head.weight = 1200
 head.inventory_size = 40
 head.guns = nil
 head.render_layer = "object"
+head.energy_source.smoke = warrig_exhaust_smoke()
+head.sound_no_fuel = {filename = WARRIG_SOUND_PATH .. "engine-fail.ogg", volume = 0.5}
+head.stop_trigger = {
+  {
+    type = "play-sound",
+    sound = {
+      {
+        filename = WARRIG_SOUND_PATH .. "brakes.ogg",
+        volume = 0.6
+      }
+    }
+  }
+}
+head.working_sound = warrig_working_sound()
+head.close_sound = {filename = WARRIG_SOUND_PATH .. "door-close.ogg", volume = 0.43}
 head.animation = {
   layers = {
     {

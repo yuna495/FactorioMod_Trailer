@@ -1,3 +1,4 @@
+require("prototypes.smoke")
 require("prototypes.head")
 require("prototypes.trailer")
 require("prototypes.items")
