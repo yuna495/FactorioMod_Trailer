@@ -16,7 +16,19 @@ Phase 1 does not implement GUI coupling, multiple trailers, or complete obstacle
 
 ## Reference Findings
 
-`Reference/kj_warrig_2.1.0` contains graphics, sounds, `info.json`, `Credits.txt`, a changelog, and migrations. It does not contain the War Rig prototype definition files, so the War Rig car prototype name, collision box, selection box, animation definition, and weight cannot be verified from the provided reference source. Because no explicit license file is present and `Credits.txt` only lists source asset credits, this mod does not copy War Rig graphics or sounds in Phase 1.
+`Reference/kj_warrig_2.1.0` contains graphics, sounds, `info.json`, `Credits.txt`, a changelog, and migrations. It does not contain the War Rig prototype definition files, so the War Rig car prototype name, collision box, selection box, animation definition, and weight cannot be verified from the provided reference source. The Factorio Mod Portal page for `kj_warrig` lists the owner/author as `TheKingJo`, homepage as `https://steamcommunity.com/id/thekingjo/`, and license as `CC BY-NC-SA 4.0`. Phase 1 copies only the War Rig and cargo trailer entity graphics needed for the head and trailer sprites.
+
+War Rig graphics copied into this mod:
+
+- `graphics/entity/warrig/warrig_0.png` through `warrig_15.png`
+- `graphics/entity/warrig/warrig_shadow_0.png` and `warrig_shadow_1.png`
+
+Cargo trailer graphics copied into this mod:
+
+- `graphics/entity/trailer/warrig_trailer_0.png` through `warrig_trailer_7.png`
+- `graphics/entity/trailer/warrig_trailer_shadow_0.png` through `warrig_trailer_shadow_7.png`
+
+Copied graphics are unmodified.
 
 `Reference/trailer_simu` contains a Python/Pygame kinematic model. The transferred behavior is based on:
 
@@ -59,7 +71,7 @@ Prototype name: `trailer-head`
 - Based on a deep copy of base `data.raw.car.car`
 - Player-drivable
 - Burner-fueled like the base car
-- Uses base car graphics in Phase 1
+- Uses copied `kj_warrig` War Rig graphics in Phase 1
 - Has a moderate trunk inventory
 
 ### Trailer Cargo
@@ -71,7 +83,7 @@ Prototype name: `trailer-cargo`
 - Uses a void energy source and zero practical traction settings for cargo-only behavior
 - Has an independent cargo inventory
 - Players are ejected if they enter it as a driver
-- Uses base car graphics in Phase 1
+- Uses copied `kj_warrig` cargo trailer graphics in Phase 1
 - Uses a longer collision/selection footprint than the head, but collision behavior is still Phase 1 quality
 - Uses an empty collision mask in Phase 1 so the linked head and trailer cannot block each other while the kinematics are being tuned.
 
@@ -100,15 +112,27 @@ Invalid entities are removed from storage during tick processing and relevant de
 
 Current Phase 1 geometry constants:
 
-- head center to hitch: `1.6` tiles
-- trailer center to hitch: `3.0` tiles
-- trailer axle to hitch: `4.8` tiles
+- head center to hitch: `2.05` tiles
+- trailer center to hitch: `4.25` tiles
+- trailer axle to hitch: `7.1` tiles
 
 Current prototype dimensions:
 
-- head collision box: `{{-0.9, -1.4}, {0.9, 1.4}}`
-- trailer collision box: `{{-0.9, -2.8}, {0.9, 2.8}}`
-- trailer selection box: `{{-1.0, -2.9}, {1.0, 2.9}}`
+- head collision box: `{{-0.96, -2.15}, {0.96, 2.15}}`
+- head selection box: `{{-1.15, -2.35}, {1.15, 2.35}}`
+- trailer collision box: `{{-1.17, -5.0}, {1.17, 5.0}}`
+- trailer selection box: `{{-1.35, -5.2}, {1.35, 5.2}}`
+
+Current sprite setup:
+
+- head render layer: `object`
+- trailer render layer: `higher-object-above`, so the cargo trailer is drawn in front of the head when the two vehicle sprites overlap near the hitch.
+- head body: 16 stripe files, each `2886x7696`, cell `962x962`, 24 directions per file, 384 directions total, scale `0.24`, shift `{0, 0}`
+- head shadow: not used in Phase 1 after the head body was corrected to 384 directions; the copied shadow files only provide 128 directions and cannot be mixed with the 384-direction body layer without a converted shadow sheet.
+- trailer body: 8 stripe files, each `5032x5032`, cell `1258x1258`, 16 directions per file, 128 directions total, scale `0.32`, shift `{0, 0}`
+- trailer shadow: 8 stripe files, each `5032x5032`, cell `1258x1258`, 16 directions per file, 128 directions total, scale `0.32`, shift `{0, 0}`
+
+The first sprite direction faces north and follows Factorio's car orientation order; `orientation = 0`, `0.25`, `0.5`, and `0.75` are intended to correspond to north, east, south, and west.
 
 Each tick for registered linked pairs:
 

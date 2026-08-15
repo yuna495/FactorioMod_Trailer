@@ -4,9 +4,22 @@
 
 - Source inspected: `Reference/kj_warrig_2.1.0`
 - Author in `info.json`: TheKingJo
-- Homepage in `info.json`: https://steamcommunity.com/id/thekingjo/
-- Files used in this mod: none
-- Reason: the reference folder does not include an explicit license file, and `Credits.txt` lists upstream asset credits but no redistribution license terms.
+- Homepage in `info.json`: <https://steamcommunity.com/id/thekingjo/>
+- Mod Portal page: <https://mods.factorio.com/mod/kj_warrig>
+- License on Mod Portal: Creative Commons Attribution-NonCommercial-ShareAlike 4.0 International (`CC BY-NC-SA 4.0`)
+- Files used in this mod:
+  - `graphics/entity/warrig/warrig_0.png` through `warrig_15.png`
+  - `graphics/entity/warrig/warrig_shadow_0.png`
+  - `graphics/entity/warrig/warrig_shadow_1.png`
+  - `graphics/entity/trailer/warrig_trailer_0.png` through `warrig_trailer_7.png`
+  - `graphics/entity/trailer/warrig_trailer_shadow_0.png` through `warrig_trailer_shadow_7.png`
 - Modification: none
 
-Phase 1 intentionally uses Factorio base-game graphics instead of copying War Rig assets.
+The copied graphics must be used under the Attribution, NonCommercial, and ShareAlike terms of CC BY-NC-SA 4.0. This file records attribution for the copied assets. The project code license is not changed by this note; distributing the combined mod with these copied assets requires honoring the copied assets' CC BY-NC-SA 4.0 terms.
+
+Upstream credits listed in `Reference/kj_warrig_2.1.0/Credits.txt`:
+
+- 3D model: `"War Rig of Fury Road" by Gandarf`, <https://3dwarehouse.sketchup.com/model/ub266797f-4fe1-4d44-89d1-812f6d39ac33/War-Rig-of-Fury-Road>
+- Icons: `Immortan Joe's Logo` by Satans-Comrad, <https://www.deviantart.com/satans-comrade/art/Immortan-Joe-s-Logo-557159268>
+- Textures: `Textures - Roads and Concrete` by Craig Whitehouse, <https://www.artstation.com/artwork/V16xb>
+- Sounds: Crossout, GTA 5

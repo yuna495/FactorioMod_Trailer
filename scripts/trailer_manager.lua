@@ -10,8 +10,8 @@ local DEBUG_TIME_TO_LIVE = 2
 local DEBUG_LINE_WIDTH = 3
 local DEBUG_TEXT_SCALE = 0.8
 
-local HEAD_COLLISION_BOX = {{-0.9, -1.4}, {0.9, 1.4}}
-local TRAILER_COLLISION_BOX = {{-0.9, -2.8}, {0.9, 2.8}}
+local HEAD_COLLISION_BOX = {{-0.9, -2.15}, {0.96, 2.15}}
+local TRAILER_COLLISION_BOX = {{-1.17, -5.0}, {1.17, 5.0}}
 
 local COLORS = {
   head_box = {1, 0.15, 0.1, 0.85},
