@@ -10,6 +10,7 @@ This mod implements Factorio 2.x free-driving semi-trailer prototypes:
 - One fixed trailer behind a `trailer-head` Semi-Trailer.
 - Two fixed trailers behind a `double-trailer-head` Double-Trailer.
 - A rail-only War Rig locomotive, cargo wagon, and fluid wagon based on the base game's rolling stock prototypes.
+- A dedicated road-rail planner and rail prototypes that use the `kj_vehicles` road-rail artwork while remaining compatible with normal rolling stock.
 - Automatic trailer creation behind the head when a trailer head is built.
 - Runtime kinematic following driven by the head entity's Factorio-updated `position`, `orientation`, `speed`, `surface`, and validity.
 - Persistent head/trailer linkage stored in `storage`.
@@ -44,6 +45,13 @@ War Rig sounds copied into this mod:
 
 Copied sounds are unmodified.
 
+Road-rail graphics copied into this mod from `Reference/kj_vehicles_2.1.11`:
+
+- `graphics/entity/rail/road.png`
+- `graphics/entity/rail/roads.png`
+
+Copied road-rail graphics are unmodified and are recorded under the upstream `kj_vehicles` CC BY-NC-SA 4.0 license.
+
 `Reference/kj_vehicles_2.1.11` contains the active War Rig car prototype integration used by `kj_warrig`. The transferred head audiovisual behavior is based on `prototypes/entities/warrig.lua`, `prototypes/entities.lua`, `prototypes/items.lua`, and `utils.lua`:
 
 - `working_sound` keeps the base car driving sound and replaces the idle engine layer with `engine.ogg`.
@@ -65,6 +73,7 @@ Copied sounds are unmodified.
 - upstream rail minimap images are `graphics/map_symbol.png`, `graphics/map_symbol_selected.png`, `graphics/wagon_map_symbol.png`, and `graphics/wagon_map_symbol_selected.png`.
 - upstream rail icons are `graphics/train.png`, `graphics/wagon.png`, and `graphics/wagon_fluid.png`.
 - upstream Rail War Rig depends on a custom `kj_gas_barrel` fuel category. This mod does not add that fuel category for Rail War Rig.
+- upstream dedicated road rails are defined in `Reference/kj_vehicles_2.1.11/prototypes/roads.lua` as `kj_road_rails`, `kj_road_rail_straight`, `kj_road_rail_half_diagonal`, `kj_road_rail_curved_rail_a`, and `kj_road_rail_curved_rail_b`.
 
 Base Factorio 2.x rolling stock values used as the Rail War Rig starting point:
 
@@ -133,7 +142,8 @@ Prototype name: `double-trailer-head`
 
 - Type: `car`
 - Deep copy of the configured `trailer-head` prototype.
-- Uses the same sprite, collision, engine, fuel, acceleration, braking, rotation, weight, exhaust, and sound settings as `trailer-head`.
+- Uses the same sprite, collision, engine, fuel, acceleration, braking, rotation, exhaust, and sound settings as `trailer-head`.
+- Uses a heavier Double-specific head weight so the Double-Trailer handles differently from the Semi-Trailer.
 - `name`, `localised_name`, `localised_description`, and `minable.result` are changed for the Double-Trailer item.
 - Player-drivable.
 - Automatically creates two visible cargo trailers and two hidden collision proxies when built.
@@ -148,6 +158,7 @@ Prototype name: `trailer-cargo`
 - Based on a deep copy of base `data.raw.car.car`
 - Uses a void energy source and zero practical traction settings for cargo-only behavior
 - Has an independent cargo inventory
+- Keeps its own `weight = 4000`, but this does not add to the road head's native car mass because the trailer is a separate scripted entity.
 - Players are ejected if they enter it as a driver
 - Uses copied `kj_warrig` cargo trailer graphics in Phase 1
 - Uses a longer selection footprint than the head.
@@ -203,6 +214,8 @@ Rail locomotive adopted values:
 - air resistance: `0.0075`
 - fuel categories: base locomotive `{"chemical"}`
 - fuel inventory size: base locomotive `3`
+- exhaust smoke: same `trailer-warrig-smoke` emissions as the road heads, from positions `{-1.2, 1.6}` and `{1.2, 1.6}`
+- sounds: War Rig engine, start, stop, brake, no-fuel, and door-close sounds match the road head assets as closely as the locomotive sound prototype supports.
 
 ### Rail Cargo Trailer
 
@@ -258,6 +271,27 @@ Rail fluid wagon adopted values:
 - `trailer-rail-locomotive` recipe uses the base locomotive recipe ingredients.
 - `trailer-rail-cargo-wagon` recipe uses the base cargo wagon recipe ingredients.
 - `trailer-rail-fluid-wagon` recipe uses the base fluid wagon recipe ingredients.
+
+### Dedicated Road Rails
+
+Rail planner item name: `trailer-road-rails`
+
+Rail prototypes:
+
+- `trailer-road-rail-straight`
+- `trailer-road-rail-half-diagonal`
+- `trailer-road-rail-curved-a`
+- `trailer-road-rail-curved-b`
+
+Dedicated road rails:
+
+- Are optional visual rails for the Rail War Rig theme.
+- Use the `graphics/entity/rail/roads.png` rail sheet copied from `kj_vehicles`.
+- Use `graphics/entity/rail/road.png` as the rail planner icon.
+- Do not restrict the Rail War Rig to only those rails; standard Factorio rails remain usable.
+- Do not add road/rail mode conversion or any runtime script handling.
+- Use Factorio 2.x rail prototype types: `straight-rail`, `half-diagonal-rail`, `curved-rail-a`, and `curved-rail-b`.
+- Are crafted from stone brick, concrete, and water using an enabled temporary Phase 2 recipe.
 
 ## Runtime State
 
@@ -327,13 +361,16 @@ Current geometry constants:
 
 Current trailer head tuning values:
 
-- effectivity: `0.7`
-- consumption: `"1500kW"`
-- braking power: `"200kW"`
-- friction: `0.0015`
-- rotation speed: `0.01`
-- rotation snap angle: `0.015`
-- weight: `20000`
+- Semi-Trailer effectivity: `0.7`
+- Semi-Trailer consumption: `"2500kW"`
+- Semi-Trailer braking power: `"250kW"`
+- Semi-Trailer friction: `0.0015`
+- Semi-Trailer rotation speed: `0.01`
+- Semi-Trailer rotation snap angle: `0.015`
+- Semi-Trailer weight: `20000`
+- Double-Trailer uses the same values except weight: `32000`
+
+The Double-Trailer uses a separate head weight instead of trying to sum trailer entity weights into the head. Factorio does not natively couple the scripted road trailer entities to the head as a single car mass, so setting `trailer-cargo.weight = 12000` would not make the driving head behave like an `8000 + 12000` or `8000 + 12000 + 12000` vehicle.
 
 Current prototype dimensions:
 

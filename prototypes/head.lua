@@ -2,15 +2,17 @@ local head = table.deepcopy(data.raw.car.car)
 local geometry = require("scripts.trailer_geometry")
 
 local WARRIG_SOUND_PATH = "__Trailer__/sounds/"
-local HEAD_TUNING = {
+local SEMI_HEAD_TUNING = {
   effectivity = 0.7,
-  consumption = "1500kW",
-  braking_power = "200kW",
+  consumption = "2500kW",
+  braking_power = "250kW",
   friction = 0.0015,
   rotation_speed = 0.01,
   rotation_snap_angle = 0.015,
   weight = 20000
 }
+local DOUBLE_HEAD_TUNING = table.deepcopy(SEMI_HEAD_TUNING)
+DOUBLE_HEAD_TUNING.weight = 32000
 
 local function warrig_body_stripes()
   local stripes = {}
@@ -69,13 +71,13 @@ head.minable = {mining_time = 0.5, result = "trailer-head"}
 head.collision_box = geometry.HEAD_COLLISION_BOX
 head.selection_box = geometry.HEAD_SELECTION_BOX
 head.collision_mask = geometry.LINKED_VEHICLE_COLLISION_MASK
-head.effectivity = HEAD_TUNING.effectivity
-head.consumption = HEAD_TUNING.consumption
-head.braking_power = HEAD_TUNING.braking_power
-head.friction = HEAD_TUNING.friction
-head.rotation_speed = HEAD_TUNING.rotation_speed
-head.rotation_snap_angle = HEAD_TUNING.rotation_snap_angle
-head.weight = HEAD_TUNING.weight
+head.effectivity = SEMI_HEAD_TUNING.effectivity
+head.consumption = SEMI_HEAD_TUNING.consumption
+head.braking_power = SEMI_HEAD_TUNING.braking_power
+head.friction = SEMI_HEAD_TUNING.friction
+head.rotation_speed = SEMI_HEAD_TUNING.rotation_speed
+head.rotation_snap_angle = SEMI_HEAD_TUNING.rotation_snap_angle
+head.weight = SEMI_HEAD_TUNING.weight
 head.inventory_size = 20
 head.guns = nil
 head.render_layer = "object"
@@ -117,5 +119,12 @@ double_head.name = "double-trailer-head"
 double_head.localised_name = {"entity-name.double-trailer-head"}
 double_head.localised_description = {"entity-description.double-trailer-head"}
 double_head.minable = {mining_time = 0.5, result = "double-trailer-head"}
+double_head.effectivity = DOUBLE_HEAD_TUNING.effectivity
+double_head.consumption = DOUBLE_HEAD_TUNING.consumption
+double_head.braking_power = DOUBLE_HEAD_TUNING.braking_power
+double_head.friction = DOUBLE_HEAD_TUNING.friction
+double_head.rotation_speed = DOUBLE_HEAD_TUNING.rotation_speed
+double_head.rotation_snap_angle = DOUBLE_HEAD_TUNING.rotation_snap_angle
+double_head.weight = DOUBLE_HEAD_TUNING.weight
 
 data:extend({head, double_head})

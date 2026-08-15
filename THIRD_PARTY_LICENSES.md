@@ -30,3 +30,16 @@ Upstream credits listed in `Reference/kj_warrig_2.1.0/Credits.txt`:
 - Icons: `Immortan Joe's Logo` by Satans-Comrad, <https://www.deviantart.com/satans-comrade/art/Immortan-Joe-s-Logo-557159268>
 - Textures: `Textures - Roads and Concrete` by Craig Whitehouse, <https://www.artstation.com/artwork/V16xb>
 - Sounds: Crossout, GTA 5
+
+## King Jo's Vehicles (`kj_vehicles`)
+
+- Source inspected: `Reference/kj_vehicles_2.1.11`
+- Author in `info.json`: TheKingJo
+- Mod Portal page: <https://mods.factorio.com/mod/kj_vehicles>
+- License: Creative Commons Attribution-NonCommercial-ShareAlike 4.0 International (`CC BY-NC-SA 4.0`)
+- Files used in this mod:
+  - `graphics/entity/rail/road.png`
+  - `graphics/entity/rail/roads.png`
+- Modification: none
+
+The copied road-rail graphics must be used under the Attribution, NonCommercial, and ShareAlike terms of CC BY-NC-SA 4.0.
