@@ -4,7 +4,7 @@
   "title": "Trailer",
   "author": "yuna495",
   "factorio_version": "2.0",
-  "description": "Phase 1 free-driving semi-trailer prototype with kinematic cargo trailer following.",
+  "description": "Free-driving semi-trailer prototypes and War Rig-styled rail rolling stock.",
   "dependencies": [
     "base >= 2.0"
   ]

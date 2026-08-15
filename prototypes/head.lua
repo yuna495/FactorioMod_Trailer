@@ -44,8 +44,8 @@ local function warrig_exhaust_smoke()
       name = "trailer-warrig-smoke",
       deviation = {0.25, 0.25},
       frequency = 100,
-      height = 1.4,
-      position = {-1, 1.4},
+      height = 1.6,
+      position = {-1.2, 1.6},
       starting_frame = 0,
       starting_frame_deviation = 60
     },
@@ -53,8 +53,8 @@ local function warrig_exhaust_smoke()
       name = "trailer-warrig-smoke",
       deviation = {0.25, 0.25},
       frequency = 100,
-      height = 1.4,
-      position = {1, 1.4},
+      height = 1.6,
+      position = {1.2, 1.6},
       starting_frame = 0,
       starting_frame_deviation = 60
     }
@@ -102,8 +102,8 @@ head.animation = {
       height = 962,
       frame_count = 1,
       direction_count = 384,
-      scale = 0.288,
-      shift = {0, 0},
+      scale = 0.384,
+      shift = {0, 0.2},
       stripes = warrig_body_stripes()
     }
   }

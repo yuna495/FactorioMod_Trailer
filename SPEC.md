@@ -9,12 +9,13 @@ This mod implements Factorio 2.x free-driving semi-trailer prototypes:
 - A hidden collision proxy entity based on the base game's `car` prototype.
 - One fixed trailer behind a `trailer-head` Semi-Trailer.
 - Two fixed trailers behind a `double-trailer-head` Double-Trailer.
+- A rail-only War Rig locomotive, cargo wagon, and fluid wagon based on the base game's rolling stock prototypes.
 - Automatic trailer creation behind the head when a trailer head is built.
 - Runtime kinematic following driven by the head entity's Factorio-updated `position`, `orientation`, `speed`, `surface`, and validity.
 - Persistent head/trailer linkage stored in `storage`.
 - Trailer cargo inventory exposed through the visible cargo vehicle inventory so inserters and players can load and unload it.
 
-Phase 2 does not implement GUI coupling, coupling/uncoupling, manual cargo-only placement, fluid trailers, tank trailers, triple trailers, automatic driving, Rail War Rig behavior, technology-tree integration, or complete native vehicle impact behavior.
+Phase 2 does not implement GUI coupling, road/rail conversion, coupling/uncoupling for road trailers, manual cargo-only road placement, road fluid trailers, tank trailers, triple trailers, automatic driving for road trailers, technology-tree integration, or complete native vehicle impact behavior.
 
 ## Reference Findings
 
@@ -50,6 +51,28 @@ Copied sounds are unmodified.
 - braking and door close sounds use the copied `brakes.ogg` and `door-close.ogg`.
 - exhaust smoke uses a local `trailer-warrig-smoke` prototype with the same black trivial-smoke parameters as `kj_warrig_smoke`.
 - exhaust emission positions are set to `{-1, 1.4}` and `{1, 1.4}` with `height = 1.4`.
+
+`Reference/kj_vehicles_2.1.11/prototypes/warrig.lua` contains the upstream Rail War Rig rolling stock prototypes:
+
+- locomotive prototype: `kj_warrig_train`
+- cargo wagon prototype: `kj_warrig_wagon`
+- fluid wagon prototype: `kj_warrig_wagon_fluid`
+- cargo wagon inventory size: `200`
+- upstream wagon fluid capacity field: `capacity = 100000`
+- upstream locomotive performance: `weight = 13000`, `max_speed = 0.6`, `max_power = "2000kW"`, `braking_force = 15`, `reversing_power_modifier = 1`, `friction_force = 0.50`, `air_resistance = 0.0075`, `connection_distance = 3`, `joint_distance = 8`
+- upstream wagon performance: `weight = 23000`, `max_speed = 1.5`, `braking_force = 15`, `friction_force = 0.50`, `air_resistance = 0.01`, `connection_distance = 3`, `joint_distance = 8`
+- upstream Rail War Rig uses the same `graphics/entity/warrig` and `graphics/entity/trailer` sprite files already copied into this mod.
+- upstream rail minimap images are `graphics/map_symbol.png`, `graphics/map_symbol_selected.png`, `graphics/wagon_map_symbol.png`, and `graphics/wagon_map_symbol_selected.png`.
+- upstream rail icons are `graphics/train.png`, `graphics/wagon.png`, and `graphics/wagon_fluid.png`.
+- upstream Rail War Rig depends on a custom `kj_gas_barrel` fuel category. This mod does not add that fuel category for Rail War Rig.
+
+Base Factorio 2.x rolling stock values used as the Rail War Rig starting point:
+
+- base locomotive performance: `weight = 2000`, `max_speed = 1.2`, `max_power = "600kW"`, `braking_force = 10`, `reversing_power_modifier = 0.6`, `friction_force = 0.50`, `air_resistance = 0.0075`, `connection_distance = 3`, `joint_distance = 4`
+- base locomotive fuel: burner energy source with `fuel_categories = {"chemical"}` and `fuel_inventory_size = 3`
+- base cargo wagon inventory size: `40`
+- base fluid wagon capacity: `50000`
+- base wagon geometry: `collision_box = {{-0.6, -2.4}, {0.6, 2.4}}`, `selection_box = {{-1, -2.703125}, {1, 3.296875}}`, `connection_distance = 3`, `joint_distance = 4`
 
 `Reference/trailer_simu` contains a Python/Pygame kinematic model. The transferred behavior is based on:
 
@@ -100,6 +123,7 @@ Prototype name: `trailer-head`
 - Uses copied `kj_warrig` War Rig engine, brake, no-fuel, and door-close sounds in Phase 1
 - Emits War Rig-style black exhaust smoke from two rear exhaust positions while burning fuel
 - Has a moderate trunk inventory
+- Uses the same War Rig visual size as `trailer-rail-locomotive` so road and rail heads have a matching size feel.
 
 The in-game display name for `trailer-head` is `Semi-Trailer`. The prototype name remains `trailer-head` for save compatibility.
 
@@ -147,6 +171,93 @@ Prototype name: `trailer-cargo-collision-proxy`
 - `double-trailer-head` places `double-trailer-head` and is displayed as `Double-Trailer`.
 - `trailer-cargo` remains hidden and is created only by script.
 - `double-trailer-head` has an enabled temporary Phase 2 test recipe using ordinary intermediate items.
+
+### Rail War Rig Locomotive
+
+Prototype name: `trailer-rail-locomotive`
+
+- Type: `locomotive`
+- Based on a deep copy of base `data.raw.locomotive.locomotive`
+- Displayed as `Rail War Rig`
+- Uses the existing War Rig body sprite files under `graphics/entity/warrig`.
+- Does not use upstream-only War Rig light sprite files that are not copied into this mod.
+- Uses the existing copied War Rig engine, brake, start, stop, and door sounds.
+- Uses base locomotive burner fuel categories and fuel inventory so vanilla locomotive fuels remain usable.
+- Uses base locomotive performance values, except geometry is adjusted for the War Rig-sized sprite.
+- Uses `graphics/icon/train.png` for entity, item, and recipe icons.
+
+Rail locomotive adopted values:
+
+- collision box: `{{-1.0, -3.2}, {1.0, 3.2}}`
+- selection box: `{{-1.2, -3.6}, {1.2, 3.6}}`
+- sprite scale: `0.384`
+- sprite shift: `{0, 0.2}`
+- connection distance: `3`
+- joint distance: `5`
+- weight: `2000`
+- max speed: `1.2`
+- max power: `"600kW"`
+- braking force: `10`
+- reversing power modifier: `0.6`
+- friction force: `0.50`
+- air resistance: `0.0075`
+- fuel categories: base locomotive `{"chemical"}`
+- fuel inventory size: base locomotive `3`
+
+### Rail Cargo Trailer
+
+Prototype name: `trailer-rail-cargo-wagon`
+
+- Type: `cargo-wagon`
+- Based on a deep copy of base `data.raw["cargo-wagon"]["cargo-wagon"]`
+- Displayed as `Rail Cargo Trailer`
+- Uses the existing trailer body and shadow sprite files under `graphics/entity/trailer`.
+- Uses base cargo wagon behavior for inserters, station loading, filters, schedules, and circuit/train integration.
+- Uses `graphics/icon/wagon.png` for entity, item, and recipe icons.
+- Does not use the road trailer collision proxy or runtime trailer storage.
+
+Rail cargo wagon adopted values:
+
+- inventory size: `100`, matching `trailer-cargo`
+- collision box: `{{-0.8, -3.4}, {0.8, 3.4}}`
+- selection box: `{{-1.1, -3.8}, {1.1, 3.8}}`
+- sprite scale: `0.384`
+- body sprite shift: `{0, 0}`
+- shadow sprite shift: `{0.96, 0.38}`
+- connection distance: `3`
+- joint distance: `5`
+- weight: base cargo wagon `1000`
+- max speed: base cargo wagon `1.5`
+- braking force: base cargo wagon `3`
+- friction force: base cargo wagon `0.50`
+- air resistance: base cargo wagon `0.01`
+
+### Rail Fluid Trailer
+
+Prototype name: `trailer-rail-fluid-wagon`
+
+- Type: `fluid-wagon`
+- Based on a deep copy of base `data.raw["fluid-wagon"]["fluid-wagon"]`
+- Displayed as `Rail Fluid Trailer`
+- Uses the same trailer body and shadow sprite files as the Rail Cargo Trailer.
+- Uses base fluid wagon behavior for pumps, train stops, GUI, schedules, and circuit/train integration.
+- Uses `graphics/icon/wagon_fluid.png` for entity, item, and recipe icons.
+- Does not implement custom Lua fluid handling.
+
+Rail fluid wagon adopted values:
+
+- capacity: base fluid wagon `50000`
+- collision box, selection box, sprite scale, sprite shift, connection distance, joint distance, weight, max speed, braking force, friction force, and air resistance match `trailer-rail-cargo-wagon`.
+
+### Rail Items and Recipes
+
+- Rail item prototypes are `item-with-entity-data` so locomotive/wagon entity data is preserved.
+- Rail item stack size is `5`, matching vanilla locomotive and wagon items.
+- Rail items use subgroup `train-transport` and orders after vanilla rolling stock.
+- Rail recipes are enabled for Phase 2 testing and are not connected to a technology tree.
+- `trailer-rail-locomotive` recipe uses the base locomotive recipe ingredients.
+- `trailer-rail-cargo-wagon` recipe uses the base cargo wagon recipe ingredients.
+- `trailer-rail-fluid-wagon` recipe uses the base fluid wagon recipe ingredients.
 
 ## Runtime State
 
@@ -205,7 +316,7 @@ Invalid entities are removed from storage during tick processing and relevant de
 
 Current geometry constants:
 
-- head center to hitch: `2.46` tiles
+- head center to hitch: `3.08` tiles
 - trailer center to hitch: `5.52` tiles
 - trailer center to rear hitch: `5.52` tiles
 - trailer axle to hitch: `8.94` tiles
@@ -226,8 +337,8 @@ Current trailer head tuning values:
 
 Current prototype dimensions:
 
-- head collision box: `{{-1.15, -2.58}, {1.15, 2.58}}`
-- head selection box: `{{-1.2, -2.82}, {1.2, 2.82}}`
+- head collision box: `{{-1.0, -3.2}, {1.0, 3.2}}`
+- head selection box: `{{-1.2, -3.6}, {1.2, 3.6}}`
 - linked vehicle collision mask: `{player=true, car=true, train=true, is_object=true}`, `consider_tile_transitions=true`, `not_colliding_with_itself=true`
 - trailer proxy collision box: `{{-1.4, -6.0}, {1.4, 6.0}}`
 - trailer selection box: `{{-1.62, -6.24}, {1.62, 6.24}}`
@@ -236,7 +347,7 @@ Current sprite setup:
 
 - head render layer: `object`
 - trailer render layer: `object`; raising the cargo trailer to `higher-object-above` caused horizontal-angle sprite disappearance/flicker in-game, so Phase 1 keeps the default vehicle render layer.
-- head body: 16 stripe files, each `2886x7696`, cell `962x962`, 24 directions per file, 384 directions total, scale `0.288`, shift `{0, 0}`
+- head body: 16 stripe files, each `2886x7696`, cell `962x962`, 24 directions per file, 384 directions total, scale `0.384`, shift `{0, 0.2}`
 - head shadow: not used in Phase 1 after the head body was corrected to 384 directions; the copied shadow files only provide 128 directions and cannot be mixed with the 384-direction body layer without a converted shadow sheet.
 - trailer body: 8 stripe files, each `5032x5032`, cell `1258x1258`, 16 directions per file, 128 directions total, scale `0.384`, shift `{0, 0}`
 - trailer shadow: 8 stripe files, each `5032x5032`, cell `1258x1258`, 16 directions per file, 128 directions total, scale `0.384`, shift `{0, 0}`
