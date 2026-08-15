@@ -7,6 +7,7 @@ trailer.icon = "__base__/graphics/icons/steel-chest.png"
 trailer.minable = {mining_time = 0.7, result = "trailer-cargo"}
 trailer.collision_box = {{-0.9, -2.8}, {0.9, 2.8}}
 trailer.selection_box = {{-1.0, -2.9}, {1.0, 2.9}}
+trailer.collision_mask = {layers = {}}
 trailer.energy_source = {type = "void"}
 trailer.effectivity = 0.01
 trailer.consumption = "1W"

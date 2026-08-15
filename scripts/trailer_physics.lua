@@ -23,12 +23,18 @@ local function vector_from_orientation(orientation)
   }
 end
 
+physics.normalize_orientation = normalize_orientation
+physics.shortest_delta_turns = shortest_delta_turns
+physics.vector_from_orientation = vector_from_orientation
+
 local function perpendicular(vector)
   return {
     x = -vector.y,
     y = vector.x
   }
 end
+
+physics.perpendicular = perpendicular
 
 function physics.position_behind(entity, distance)
   local forward = vector_from_orientation(entity.orientation)

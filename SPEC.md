@@ -39,6 +39,7 @@ Confirmed from Factorio 2.x local base data and official API docs:
 - `LuaEntity.teleport(position, surface, raise_teleported, snap_to_grid, build_check_type)` is used to move the trailer.
 - `LuaSurface.can_place_entity{name=..., position=..., force=..., build_check_type=...}` can pre-check placement/collision.
 - `defines.events.on_player_driving_changed_state` is used to prevent players from driving the trailer entity.
+- `CollisionMask` is prototype-level data. The available documented options include `layers`, `not_colliding_with_itself`, and `colliding_with_tiles_only`; no entity-instance or specific two-entity-pair collision exclusion is used by this mod.
 
 Factorio orientation is a real orientation in turns: `0` is north, `0.25` is east, `0.5` is south, and values increase clockwise. The forward vector used by this mod is:
 
@@ -72,6 +73,7 @@ Prototype name: `trailer-cargo`
 - Players are ejected if they enter it as a driver
 - Uses base car graphics in Phase 1
 - Uses a longer collision/selection footprint than the head, but collision behavior is still Phase 1 quality
+- Uses an empty collision mask in Phase 1 so the linked head and trailer cannot block each other while the kinematics are being tuned.
 
 ## Runtime State
 
@@ -102,6 +104,12 @@ Current Phase 1 geometry constants:
 - trailer center to hitch: `3.0` tiles
 - trailer axle to hitch: `4.8` tiles
 
+Current prototype dimensions:
+
+- head collision box: `{{-0.9, -1.4}, {0.9, 1.4}}`
+- trailer collision box: `{{-0.9, -2.8}, {0.9, 2.8}}`
+- trailer selection box: `{{-1.0, -2.9}, {1.0, 2.9}}`
+
 Each tick for registered linked pairs:
 
 1. Validate head and trailer.
@@ -119,10 +127,14 @@ The head's acceleration, braking, steering, and speed are left to Factorio's nat
 
 ## Collision
 
-Phase 1 does not implement robust trailer obstacle rollback. The trailer is moved by script teleport after optional placement checking. Known limitations:
+Phase 1 does not implement robust trailer obstacle rollback. The trailer cargo prototype uses `collision_mask = {layers = {}}`; this disables the trailer's physical collision with the head, buildings, walls, trees, rocks, other vehicles, and blocking tiles. The trailer still has a collision box and selection box for geometry/debug display, but that collision box is not used to block movement in Phase 1.
+
+Reason: Factorio collision masks are prototype-level and `not_colliding_with_itself` only works for prototypes with identical mask layers and the option enabled. That cannot express "ignore only this linked head/trailer pair while still colliding with other vehicles and buildings." `LuaEntity.teleport` can ignore the teleported entity itself during build checks, but it does not provide an option to ignore a separate linked head entity.
+
+Known limitations:
 
 - Scripted trailer movement may not behave like native car collision in every obstacle case.
-- If placement checking rejects a new trailer position, this implementation leaves the trailer at its previous position for that tick and keeps the linkage state conservative.
+- If trailer teleport fails for any remaining reason, the hitch history is advanced to the current hitch position so one failure does not accumulate a large displacement and destabilize later ticks.
 - Head rollback and speed stopping are not implemented in Phase 1 because forcibly overriding Factorio car physics may create unsafe side effects without in-game validation.
 
 Phase 2 should investigate `LuaSurface.can_place_entity` and `LuaEntity.teleport` build-check behavior in-game before adding rollback.
@@ -133,4 +145,14 @@ The mod uses `storage`, keeps LuaEntity references only for entities it owns, an
 
 ## Debugging
 
-Runtime debug rendering is disabled by default with a local constant in `scripts/trailer_manager.lua`. When enabled, it draws short-lived markers for hitch, trailer center, and trailer axle positions.
+Runtime debug rendering is enabled for Phase 1 with a single local constant in `scripts/trailer_manager.lua`. When enabled, it draws short-lived rendering objects each tick:
+
+- rotated head collision-box outline in red,
+- rotated trailer collision-box outline in blue,
+- head center in white,
+- trailer center in white,
+- hitch position in yellow,
+- trailer axle position in green,
+- hitch angle text near the head.
+
+If debug rendering is turned off, the rendering code returns before doing geometry work.
