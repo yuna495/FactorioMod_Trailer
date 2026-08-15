@@ -111,7 +111,8 @@ Prototype name: `trailer-cargo`
 - Players are ejected if they enter it as a driver
 - Uses copied `kj_warrig` cargo trailer graphics in Phase 1
 - Uses a longer selection footprint than the head.
-- Has an empty collision mask. It is the stable visual/inventory entity and is not responsible for obstacle blocking.
+- Has a full trailer-sized interaction collision box with an empty collision mask. It is the stable visual/inventory entity and is not responsible for obstacle blocking.
+- Inserters interact with the visible cargo entity's inventory through that full interaction box.
 
 ### Trailer Cargo Collision Proxy
 
@@ -214,6 +215,8 @@ The head's acceleration, braking, steering, and speed are left to Factorio's nat
 ## Collision
 
 Phase 1 does not implement full native vehicle impact behavior. The visible trailer cargo prototype uses `collision_mask = {layers = {}}` so its sprite/inventory entity can always stay visually stable and is not hidden by failed collision-checked teleports. Obstacle blocking is handled by `trailer-cargo-collision-proxy`, an invisible car prototype with the same base-car-equivalent collision mask as the head plus `not_colliding_with_itself=true`.
+
+The visible trailer cargo entity uses the trailer-sized collision box even though its collision mask is empty. This keeps it non-blocking while giving inserters a normal-sized target area for loading and unloading the cargo inventory.
 
 Factorio `collision_box` is a single bounding box and cannot contain a hole. The hidden collision proxy uses the full trailer footprint so the visual front/kingpin area is also covered. Self-collision with the linked head is avoided by giving both prototypes the same linked mask and `not_colliding_with_itself=true`.
 

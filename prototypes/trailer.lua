@@ -31,7 +31,7 @@ trailer.localised_name = {"entity-name.trailer-cargo"}
 trailer.localised_description = {"entity-description.trailer-cargo"}
 trailer.icon = "__base__/graphics/icons/steel-chest.png"
 trailer.minable = {mining_time = 0.7, result = "trailer-cargo"}
-trailer.collision_box = {{-0.01, -0.01}, {0.01, 0.01}}
+trailer.collision_box = geometry.TRAILER_COLLISION_BOX
 trailer.selection_box = geometry.TRAILER_SELECTION_BOX
 trailer.collision_mask = geometry.EMPTY_COLLISION_MASK
 trailer.energy_source = {type = "void"}
