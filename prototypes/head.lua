@@ -1,4 +1,5 @@
 local head = table.deepcopy(data.raw.car.car)
+local geometry = require("scripts.trailer_geometry")
 
 local function warrig_body_stripes()
   local stripes = {}
@@ -17,8 +18,9 @@ head.localised_name = {"entity-name.trailer-head"}
 head.localised_description = {"entity-description.trailer-head"}
 head.icon = "__base__/graphics/icons/car.png"
 head.minable = {mining_time = 0.5, result = "trailer-head"}
-head.collision_box = {{-0.96, -2.15}, {0.96, 2.15}}
-head.selection_box = {{-1.15, -2.35}, {1.15, 2.35}}
+head.collision_box = geometry.HEAD_COLLISION_BOX
+head.selection_box = geometry.HEAD_SELECTION_BOX
+head.collision_mask = geometry.LINKED_VEHICLE_COLLISION_MASK
 head.weight = 1200
 head.inventory_size = 40
 head.guns = nil

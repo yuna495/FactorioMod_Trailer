@@ -1,4 +1,6 @@
 local trailer = table.deepcopy(data.raw.car.car)
+local proxy = table.deepcopy(data.raw.car.car)
+local geometry = require("scripts.trailer_geometry")
 
 local function trailer_body_stripes()
   local stripes = {}
@@ -29,9 +31,9 @@ trailer.localised_name = {"entity-name.trailer-cargo"}
 trailer.localised_description = {"entity-description.trailer-cargo"}
 trailer.icon = "__base__/graphics/icons/steel-chest.png"
 trailer.minable = {mining_time = 0.7, result = "trailer-cargo"}
-trailer.collision_box = {{-1.17, -5.0}, {1.17, 5.0}}
-trailer.selection_box = {{-1.35, -5.2}, {1.35, 5.2}}
-trailer.collision_mask = {layers = {}}
+trailer.collision_box = {{-0.01, -0.01}, {0.01, 0.01}}
+trailer.selection_box = geometry.TRAILER_SELECTION_BOX
+trailer.collision_mask = geometry.EMPTY_COLLISION_MASK
 trailer.energy_source = {type = "void"}
 trailer.effectivity = 0.01
 trailer.consumption = "1W"
@@ -42,7 +44,7 @@ trailer.friction = 1
 trailer.weight = 4000
 trailer.inventory_size = 80
 trailer.guns = nil
-trailer.render_layer = "higher-object-above"
+trailer.render_layer = "object"
 trailer.light = nil
 trailer.light_animation = nil
 trailer.turret_animation = nil
@@ -77,4 +79,44 @@ trailer.animation = {
   }
 }
 
-data:extend({trailer})
+proxy.name = "trailer-cargo-collision-proxy"
+proxy.localised_name = {"entity-name.trailer-cargo"}
+proxy.localised_description = {"entity-description.trailer-cargo"}
+proxy.icon = "__base__/graphics/icons/steel-chest.png"
+proxy.flags = {"not-on-map", "not-blueprintable", "not-deconstructable", "hide-alt-info"}
+proxy.hidden = true
+proxy.selectable_in_game = false
+proxy.destructible = false
+proxy.minable = nil
+proxy.collision_box = geometry.TRAILER_COLLISION_BOX
+proxy.selection_box = {{-0.01, -0.01}, {0.01, 0.01}}
+proxy.collision_mask = geometry.LINKED_VEHICLE_COLLISION_MASK
+proxy.energy_source = {type = "void"}
+proxy.effectivity = 0.01
+proxy.consumption = "1W"
+proxy.braking_power = "1W"
+proxy.rotation_speed = 0.0001
+proxy.rotation_snap_angle = 0
+proxy.friction = 1
+proxy.weight = 4000
+proxy.inventory_size = 0
+proxy.guns = nil
+proxy.render_layer = "object"
+proxy.light = nil
+proxy.light_animation = nil
+proxy.turret_animation = nil
+proxy.turret_rotation_speed = nil
+proxy.working_sound = nil
+proxy.sound_no_fuel = nil
+proxy.stop_trigger = nil
+proxy.track_particle_triggers = nil
+proxy.animation = {
+  filename = "__core__/graphics/empty.png",
+  priority = "low",
+  width = 1,
+  height = 1,
+  frame_count = 1,
+  direction_count = 1
+}
+
+data:extend({trailer, proxy})
