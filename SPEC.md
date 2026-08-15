@@ -48,7 +48,7 @@ Copied sounds are unmodified.
 - engine start/stop/no-fuel sounds use the copied `engine-start.ogg`, `engine-stop.ogg`, and `engine-fail.ogg`.
 - braking and door close sounds use the copied `brakes.ogg` and `door-close.ogg`.
 - exhaust smoke uses a local `trailer-warrig-smoke` prototype with the same black trivial-smoke parameters as `kj_warrig_smoke`.
-- exhaust emission positions match the War Rig source positions at `{-1.25, 2}` and `{1.25, 2}`.
+- exhaust emission positions are scaled with the Phase 1 head sprite size and are set to `{-1.5, 2.4}` and `{1.5, 2.4}`.
 
 `Reference/trailer_simu` contains a Python/Pygame kinematic model. The transferred behavior is based on:
 
@@ -154,26 +154,26 @@ Invalid entities are removed from storage during tick processing and relevant de
 
 Current Phase 1 geometry constants:
 
-- head center to hitch: `2.05` tiles
-- trailer center to hitch: `4.25` tiles
-- trailer axle to hitch: `7.1` tiles
+- head center to hitch: `2.46` tiles
+- trailer center to hitch: `5.52` tiles
+- trailer axle to hitch: `8.94` tiles
 
 Current prototype dimensions:
 
-- head collision box: `{{-0.96, -2.15}, {0.96, 2.15}}`
-- head selection box: `{{-1.15, -2.35}, {1.15, 2.35}}`
+- head collision box: `{{-1.15, -2.58}, {1.15, 2.58}}`
+- head selection box: `{{-1.2, -2.82}, {1.2, 2.82}}`
 - linked vehicle collision mask: `{player=true, car=true, train=true, is_object=true}`, `consider_tile_transitions=true`, `not_colliding_with_itself=true`
-- trailer proxy collision box: `{{-1.17, -5.0}, {1.17, 5.0}}`
-- trailer selection box: `{{-1.35, -5.2}, {1.35, 5.2}}`
+- trailer proxy collision box: `{{-1.4, -6.0}, {1.4, 6.0}}`
+- trailer selection box: `{{-1.62, -6.24}, {1.62, 6.24}}`
 
 Current sprite setup:
 
 - head render layer: `object`
 - trailer render layer: `object`; raising the cargo trailer to `higher-object-above` caused horizontal-angle sprite disappearance/flicker in-game, so Phase 1 keeps the default vehicle render layer.
-- head body: 16 stripe files, each `2886x7696`, cell `962x962`, 24 directions per file, 384 directions total, scale `0.24`, shift `{0, 0}`
+- head body: 16 stripe files, each `2886x7696`, cell `962x962`, 24 directions per file, 384 directions total, scale `0.288`, shift `{0, 0}`
 - head shadow: not used in Phase 1 after the head body was corrected to 384 directions; the copied shadow files only provide 128 directions and cannot be mixed with the 384-direction body layer without a converted shadow sheet.
-- trailer body: 8 stripe files, each `5032x5032`, cell `1258x1258`, 16 directions per file, 128 directions total, scale `0.32`, shift `{0, 0}`
-- trailer shadow: 8 stripe files, each `5032x5032`, cell `1258x1258`, 16 directions per file, 128 directions total, scale `0.32`, shift `{0, 0}`
+- trailer body: 8 stripe files, each `5032x5032`, cell `1258x1258`, 16 directions per file, 128 directions total, scale `0.384`, shift `{0, 0}`
+- trailer shadow: 8 stripe files, each `5032x5032`, cell `1258x1258`, 16 directions per file, 128 directions total, scale `0.384`, shift `{0, 0}`
 
 The first sprite direction faces north and follows Factorio's car orientation order; `orientation = 0`, `0.25`, `0.5`, and `0.75` are intended to correspond to north, east, south, and west.
 

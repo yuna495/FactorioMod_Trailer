@@ -61,7 +61,7 @@ trailer.animation = {
       height = 1258,
       frame_count = 1,
       direction_count = 128,
-      scale = 0.32,
+      scale = 0.384,
       shift = {0, 0},
       stripes = trailer_body_stripes()
     },
@@ -71,7 +71,7 @@ trailer.animation = {
       height = 1258,
       frame_count = 1,
       direction_count = 128,
-      scale = 0.32,
+      scale = 0.384,
       shift = {0, 0},
       draw_as_shadow = true,
       stripes = trailer_shadow_stripes()
