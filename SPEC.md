@@ -48,7 +48,7 @@ Confirmed from Factorio 2.x local base data and official API docs:
 
 - `car` prototypes support `inventory_size`, `energy_source`, `effectivity`, `consumption`, `rotation_speed`, `rotation_snap_angle`, `friction`, `weight`, `collision_box`, and `selection_box`.
 - The base `car` collision mask in local Factorio 2.x core data is `{player=true, car=true, train=true, is_object=true}` with `consider_tile_transitions=true`.
-- The linked vehicle collision mask intentionally adds common obstacle layers (`item`, `object`, and `is_lower_object`) so the hidden cargo collision proxy can collide with trees, rocks, buildings, blocking tiles, and vanilla vehicles while still avoiding same-mask Trailer MOD self-collision. It intentionally does not add `elevated_rail`, because that caused the drivable head to collide with rails in-game.
+- The linked vehicle collision mask matches the base `car` mask and only adds `not_colliding_with_itself=true`. It does not add `item`, `object`, `rail`, `water_tile`, `is_lower_object`, or `elevated_rail`; adding those layers makes the head collide with ground rails that vanilla cars can cross.
 - `not_colliding_with_itself=true` prevents collision only when both masks have that flag and the masks have the same layers.
 - `CarPrototype::energy_source` accepts burner or void energy sources.
 - `LuaEntity.position`, `LuaEntity.orientation`, `LuaEntity.speed`, `LuaEntity.surface`, `LuaEntity.valid`, and `LuaEntity.unit_number` are used at runtime.
@@ -114,8 +114,11 @@ storage.trailers = {
     collision_proxy = LuaEntity,
     previous_hitch_position = {x = number, y = number},
     trailer_orientation = number,
-    last_head_position = {x = number, y = number},
-    last_head_orientation = number
+    accepted_head_position = {x = number, y = number},
+    accepted_head_orientation = number,
+    accepted_hitch_position = {x = number, y = number},
+    accepted_trailer_position = {x = number, y = number},
+    accepted_trailer_orientation = number
   }
 }
 ```
@@ -137,7 +140,7 @@ Current prototype dimensions:
 
 - head collision box: `{{-0.96, -2.15}, {0.96, 2.15}}`
 - head selection box: `{{-1.15, -2.35}, {1.15, 2.35}}`
-- linked vehicle collision mask: `{item=true, object=true, player=true, water_tile=true, car=true, train=true, is_lower_object=true, is_object=true}`, `consider_tile_transitions=true`, `not_colliding_with_itself=true`
+- linked vehicle collision mask: `{player=true, car=true, train=true, is_object=true}`, `consider_tile_transitions=true`, `not_colliding_with_itself=true`
 - trailer proxy collision box: `{{-1.17, -5.0}, {1.17, 5.0}}`
 - trailer selection box: `{{-1.35, -5.2}, {1.35, 5.2}}`
 
@@ -162,16 +165,18 @@ Each tick for registered linked pairs:
 6. Convert lateral displacement into a trailer orientation delta using `delta / TRAILER_AXLE_TO_HITCH_DISTANCE`.
 7. Clamp trailer/head angle difference to `MAX_HITCH_ANGLE_TURNS`.
 8. Reconstruct trailer center from hitch and trailer orientation.
-9. Teleport the hidden collision proxy to the reconstructed center with script build checks.
-10. If the collision proxy move succeeds, teleport the visible trailer to the accepted proxy position and assign both orientations.
-11. If the collision proxy move fails, keep the visible trailer at the previous accepted proxy position, show blocked debug text, and advance hitch history enough to avoid accumulating an unstable displacement spike.
-12. Store the current hitch and accepted trailer orientation for save/load continuity.
+9. Move the hidden collision proxy from the last accepted pose to the reconstructed target pose in substeps with script build checks.
+10. If every substep succeeds, teleport the visible trailer to the accepted proxy position and assign both orientations.
+11. If any substep fails, restore the head, proxy, visible trailer, hitch history, and trailer orientation to the last accepted pose; set head speed to `0`; show blocked debug text.
+12. Store the accepted head, hitch, proxy/trailer position, and trailer orientation for save/load continuity.
+
+The proxy substep target spacing is `0.22` tiles. The step count is based on the larger of center movement and angular sweep at the trailer collision-box half diagonal, capped at `64` substeps per linked trailer per tick to keep UPS cost bounded.
 
 The head's acceleration, braking, steering, and speed are left to Factorio's native car physics.
 
 ## Collision
 
-Phase 1 does not implement robust trailer obstacle rollback. The visible trailer cargo prototype uses `collision_mask = {layers = {}}` so its sprite/inventory entity can always stay visually stable and is not hidden by failed collision-checked teleports. Obstacle blocking is handled by `trailer-cargo-collision-proxy`, an invisible car prototype with the same explicit obstacle-aware collision mask as the head plus `not_colliding_with_itself=true`.
+Phase 1 does not implement full native vehicle impact behavior. The visible trailer cargo prototype uses `collision_mask = {layers = {}}` so its sprite/inventory entity can always stay visually stable and is not hidden by failed collision-checked teleports. Obstacle blocking is handled by `trailer-cargo-collision-proxy`, an invisible car prototype with the same base-car-equivalent collision mask as the head plus `not_colliding_with_itself=true`.
 
 Factorio `collision_box` is a single bounding box and cannot contain a hole. The hidden collision proxy uses the full trailer footprint so the visual front/kingpin area is also covered. Self-collision with the linked head is avoided by giving both prototypes the same linked mask and `not_colliding_with_itself=true`.
 
@@ -179,16 +184,16 @@ The mod's existing forward vector makes local negative Y the forward direction. 
 
 The values are defined once in `scripts/trailer_geometry.lua` and reused by data-stage prototypes and runtime debug rendering.
 
-Reason: Factorio collision masks are prototype-level. `not_colliding_with_itself=true` applies when both entities have the option and the same collision layers, so this mod gives `trailer-head` and `trailer-cargo-collision-proxy` the same linked-vehicle mask. This cannot express "ignore only this exact linked pair" and may also prevent collision between multiple Trailer MOD vehicle parts that share the same mask. It should still collide with vanilla vehicles and ordinary obstacles that do not use this exact flagged mask.
+Reason: Factorio collision masks are prototype-level. `not_colliding_with_itself=true` applies when both entities have the option and the same collision layers, so this mod gives `trailer-head` and `trailer-cargo-collision-proxy` the same linked-vehicle mask. This cannot express "ignore only this exact linked pair" and may also prevent collision between multiple Trailer MOD vehicle parts that share the same mask. The mask stays otherwise equivalent to vanilla `car`, because vanilla car already collides with trees and buildings through shared `player` / `is_object` layers while still crossing ground rails.
 
 Known limitations:
 
-- Scripted trailer proxy movement may not behave like native car collision in every obstacle case.
-- If proxy teleport fails for any remaining reason, the hitch history is advanced to the current hitch position so one failure does not accumulate a large displacement and destabilize later ticks.
+- Scripted trailer proxy movement may not produce native car impact damage, tree destruction, or vehicle damage.
+- Proxy movement is substepped from the last accepted pose to reduce teleport tunneling. If a substep fails, the whole tick is rejected; partial substep progress is not accepted.
+- On proxy movement failure, head movement is rolled back to the last accepted head pose and `head.speed` is set to `0`.
 - Debug rendering shows a short-lived `Trailer blocked` text when the proxy teleport fails.
-- Head rollback and speed stopping are not implemented in Phase 1 because forcibly overriding Factorio car physics may create unsafe side effects without in-game validation.
 
-Phase 2 should investigate `LuaSurface.can_place_entity` and `LuaEntity.teleport` build-check behavior in-game before adding rollback.
+Phase 2 should investigate native impact damage and obstacle destruction behavior.
 
 ## Save Compatibility
 

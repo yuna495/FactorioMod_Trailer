@@ -7,13 +7,9 @@ geometry.EMPTY_COLLISION_MASK = {layers = {}}
 
 geometry.LINKED_VEHICLE_COLLISION_MASK = {
   layers = {
-    item = true,
-    object = true,
     player = true,
-    water_tile = true,
     car = true,
     train = true,
-    is_lower_object = true,
     is_object = true
   },
   consider_tile_transitions = true,

@@ -11,9 +11,15 @@ local DEBUG_RENDERING = true
 local DEBUG_TIME_TO_LIVE = 2
 local DEBUG_LINE_WIDTH = 3
 local DEBUG_TEXT_SCALE = 0.8
+local MAX_PROXY_SUBSTEP_DISTANCE = 0.22
+local MAX_PROXY_SUBSTEPS = 64
 
 local HEAD_COLLISION_BOX = geometry.HEAD_COLLISION_BOX
 local TRAILER_COLLISION_BOX = geometry.TRAILER_COLLISION_BOX
+local TRAILER_HALF_DIAGONAL = math.sqrt(
+  math.max(math.abs(TRAILER_COLLISION_BOX[1][1]), math.abs(TRAILER_COLLISION_BOX[2][1])) ^ 2 +
+  math.max(math.abs(TRAILER_COLLISION_BOX[1][2]), math.abs(TRAILER_COLLISION_BOX[2][2])) ^ 2
+)
 
 local COLORS = {
   head_box = {1, 0.15, 0.1, 0.85},
@@ -104,6 +110,30 @@ local function hitch_angle_degrees(head_orientation, trailer_orientation)
   return math.abs(physics.shortest_delta_turns(head_orientation, trailer_orientation)) * 360
 end
 
+local function copy_position(position)
+  return {x = position.x, y = position.y}
+end
+
+local function orientation_to_direction(orientation)
+  return math.floor((orientation % 1) * 16 + 0.5) % 16
+end
+
+local function interpolate_orientation(from_orientation, to_orientation, ratio)
+  return (from_orientation + physics.shortest_delta_turns(from_orientation, to_orientation) * ratio) % 1
+end
+
+local function substep_count(from_position, from_orientation, to_position, to_orientation)
+  local dx = to_position.x - from_position.x
+  local dy = to_position.y - from_position.y
+  local distance = math.sqrt(dx * dx + dy * dy)
+  local angular_distance = math.abs(physics.shortest_delta_turns(from_orientation, to_orientation)) * math.pi * 2 * TRAILER_HALF_DIAGONAL
+  local steps = math.ceil(math.max(distance, angular_distance) / MAX_PROXY_SUBSTEP_DISTANCE)
+  if steps < 1 then
+    return 1
+  end
+  return math.min(steps, MAX_PROXY_SUBSTEPS)
+end
+
 local function render_debug(link, state, blocked)
   if not DEBUG_RENDERING then
     return
@@ -178,13 +208,90 @@ local function create_collision_proxy(surface, force, position, orientation)
   return proxy
 end
 
-local function can_place_collision_proxy(surface, force, position)
+local function move_proxy_substepped(link, target_position, target_orientation)
+  local proxy = link.collision_proxy
+  local start_position = copy_position(link.accepted_trailer_position or proxy.position)
+  local start_orientation = link.accepted_trailer_orientation or proxy.orientation
+  local steps = substep_count(start_position, start_orientation, target_position, target_orientation)
+
+  proxy.orientation = start_orientation
+  proxy.teleport(start_position, nil, false, false)
+  proxy.speed = 0
+
+  for step = 1, steps do
+    local ratio = step / steps
+    local step_position = {
+      x = start_position.x + (target_position.x - start_position.x) * ratio,
+      y = start_position.y + (target_position.y - start_position.y) * ratio
+    }
+    local step_orientation = interpolate_orientation(start_orientation, target_orientation, ratio)
+
+    proxy.orientation = step_orientation
+    if not proxy.teleport(step_position, nil, false, false, defines.build_check_type.script) then
+      proxy.orientation = start_orientation
+      proxy.teleport(start_position, nil, false, false)
+      proxy.speed = 0
+      return false, steps, step
+    end
+    proxy.speed = 0
+  end
+
+  proxy.orientation = target_orientation
+  proxy.speed = 0
+  return true, steps, steps
+end
+
+local function can_place_collision_proxy(surface, force, position, orientation)
   return surface.can_place_entity{
     name = TRAILER_PROXY_NAME,
     position = position,
+    direction = orientation_to_direction(orientation or 0),
     force = force,
     build_check_type = defines.build_check_type.script
   }
+end
+
+local function ensure_accepted_state(link)
+  link.accepted_head_position = link.accepted_head_position or copy_position(link.head.position)
+  link.accepted_head_orientation = link.accepted_head_orientation or link.head.orientation
+  link.accepted_hitch_position = link.accepted_hitch_position or link.previous_hitch_position or physics.position_behind(link.head, physics.HEAD_TO_HITCH_DISTANCE)
+  link.accepted_trailer_position = link.accepted_trailer_position or copy_position(link.trailer.position)
+  link.accepted_trailer_orientation = link.accepted_trailer_orientation or link.trailer_orientation or link.trailer.orientation
+
+  link.previous_hitch_position = link.accepted_hitch_position
+  link.trailer_orientation = link.accepted_trailer_orientation
+end
+
+local function accept_state(link, state)
+  link.accepted_head_position = copy_position(link.head.position)
+  link.accepted_head_orientation = link.head.orientation
+  link.accepted_hitch_position = copy_position(state.hitch)
+  link.accepted_trailer_position = copy_position(link.collision_proxy.position)
+  link.accepted_trailer_orientation = state.trailer_orientation
+
+  link.previous_hitch_position = link.accepted_hitch_position
+  link.trailer_orientation = link.accepted_trailer_orientation
+end
+
+local function restore_accepted_state(link)
+  ensure_accepted_state(link)
+
+  link.head.teleport(link.accepted_head_position, nil, false, false)
+  link.head.orientation = link.accepted_head_orientation
+  link.head.speed = 0
+
+  if is_valid(link.collision_proxy) then
+    link.collision_proxy.orientation = link.accepted_trailer_orientation
+    link.collision_proxy.teleport(link.accepted_trailer_position, nil, false, false)
+    link.collision_proxy.speed = 0
+  end
+
+  link.trailer.teleport(link.accepted_trailer_position, nil, false, false)
+  link.trailer.orientation = link.accepted_trailer_orientation
+  link.trailer.speed = 0
+
+  link.previous_hitch_position = link.accepted_hitch_position
+  link.trailer_orientation = link.accepted_trailer_orientation
 end
 
 local function register_link(head, trailer, collision_proxy, initial)
@@ -195,8 +302,11 @@ local function register_link(head, trailer, collision_proxy, initial)
     collision_proxy = collision_proxy,
     previous_hitch_position = initial.hitch,
     trailer_orientation = initial.trailer_orientation,
-    last_head_position = {x = head.position.x, y = head.position.y},
-    last_head_orientation = head.orientation
+    accepted_head_position = copy_position(head.position),
+    accepted_head_orientation = head.orientation,
+    accepted_hitch_position = copy_position(initial.hitch),
+    accepted_trailer_position = copy_position(initial.trailer_center),
+    accepted_trailer_orientation = initial.trailer_orientation
   }
   storage.trailers_by_trailer_unit_number[trailer.unit_number] = head.unit_number
   storage.trailers_by_proxy_unit_number[collision_proxy.unit_number] = head.unit_number
@@ -208,7 +318,7 @@ local function ensure_collision_proxy(head_unit_number, link)
     return true
   end
 
-  if not can_place_collision_proxy(link.trailer.surface, link.trailer.force, link.trailer.position) then
+  if not can_place_collision_proxy(link.trailer.surface, link.trailer.force, link.trailer.position, link.trailer.orientation) then
     return false
   end
 
@@ -219,6 +329,7 @@ local function ensure_collision_proxy(head_unit_number, link)
 
   link.collision_proxy = proxy
   storage.trailers_by_proxy_unit_number[proxy.unit_number] = head_unit_number
+  ensure_accepted_state(link)
   return true
 end
 
@@ -233,7 +344,7 @@ local function create_trailer_for_head(head)
   local initial = physics.initial_state(head)
   local surface = head.surface
   local force = head.force
-  if not can_place_collision_proxy(surface, force, initial.trailer_center) then
+  if not can_place_collision_proxy(surface, force, initial.trailer_center, initial.trailer_orientation) then
     return
   end
 
@@ -267,6 +378,9 @@ function manager.init()
     elseif link.trailer.unit_number then
       storage.trailers_by_trailer_unit_number[link.trailer.unit_number] = head_unit_number
       ensure_collision_proxy(head_unit_number, link)
+      if is_valid(link.collision_proxy) then
+        ensure_accepted_state(link)
+      end
     end
   end
 end
@@ -340,34 +454,22 @@ function manager.on_tick()
       remove_link(head_unit_number)
     elseif not ensure_collision_proxy(head_unit_number, link) then
       local state = physics.next_state(link)
-      link.previous_hitch_position = state.hitch
-      link.trailer_orientation = link.trailer.orientation
-      link.last_head_position = {x = link.head.position.x, y = link.head.position.y}
-      link.last_head_orientation = link.head.orientation
+      restore_accepted_state(link)
       render_debug(link, state, true)
       render_blocked_debug(link, state)
     elseif link.head.surface ~= link.trailer.surface or link.head.surface ~= link.collision_proxy.surface then
       remove_link(head_unit_number)
     else
+      ensure_accepted_state(link)
       local state = physics.next_state(link)
-      local accepted_orientation = link.collision_proxy.orientation
-      link.collision_proxy.orientation = state.trailer_orientation
-      if link.collision_proxy.teleport(state.trailer_center, nil, false, false, defines.build_check_type.script) then
-        link.collision_proxy.speed = 0
+      if move_proxy_substepped(link, state.trailer_center, state.trailer_orientation) then
         link.trailer.teleport(link.collision_proxy.position, nil, false, false)
         link.trailer.orientation = state.trailer_orientation
         link.trailer.speed = 0
-        link.previous_hitch_position = state.hitch
-        link.trailer_orientation = state.trailer_orientation
-        link.last_head_position = {x = link.head.position.x, y = link.head.position.y}
-        link.last_head_orientation = link.head.orientation
+        accept_state(link, state)
         render_debug(link, state, false)
       else
-        link.collision_proxy.orientation = accepted_orientation
-        link.previous_hitch_position = state.hitch
-        link.trailer_orientation = link.trailer.orientation
-        link.last_head_position = {x = link.head.position.x, y = link.head.position.y}
-        link.last_head_orientation = link.head.orientation
+        restore_accepted_state(link)
         render_debug(link, state, true)
         render_blocked_debug(link, state)
       end
