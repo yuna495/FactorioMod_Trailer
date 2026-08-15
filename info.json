@@ -4,7 +4,7 @@
   "title": "War Rig Transport",
   "author": "yuna495",
   "factorio_version": "2.0",
-  "description": "Free-driving trailer prototypes and War Rig-styled rail rolling stock.",
+  "description": "Adds free-driving Semi, Double, and Triple Trailers, plus War Rig-style locomotives, cargo and fluid wagons, and road-styled rails.",
   "dependencies": [
     "base >= 2.0"
   ]
