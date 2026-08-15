@@ -19,13 +19,14 @@ local TECHNOLOGY_UNLOCKS = {
     "trailer-road-rails"
   }
 }
-local DEBUG_RENDERING = false
+local DEBUG_RENDERING = true
 
 local DEBUG_TIME_TO_LIVE = 2
 local DEBUG_LINE_WIDTH = 3
 local DEBUG_TEXT_SCALE = 0.8
 local MAX_PROXY_SUBSTEP_DISTANCE = 0.22
 local MAX_PROXY_SUBSTEPS = 64
+local PROXY_MAX_HEALTH = 1000000
 local PROXY_BUILD_CHECK_TYPE = defines.build_check_type.ghost_revive
 local PROXY_BUILD_CHECK_TYPE_NAME = "ghost_revive"
 local LINKED_INVENTORIES = {
@@ -210,6 +211,59 @@ local function remove_whole_link_for_entity(entity, link, head_unit_number, buff
   end
 
   destroy_link_entities(link, entity, buffer)
+end
+
+local function restore_proxy_health(proxy)
+  if is_valid(proxy) then
+    proxy.health = PROXY_MAX_HEALTH
+  end
+end
+
+local function apply_proxy_damage_to_trailer(proxy, damage_amount)
+  if not is_valid(proxy) or proxy.name ~= TRAILER_PROXY_NAME or not proxy.unit_number then
+    return
+  end
+  if not damage_amount or damage_amount <= 0 then
+    restore_proxy_health(proxy)
+    return
+  end
+
+  local head_unit_number = storage.trailers_by_proxy_unit_number[proxy.unit_number]
+  if not head_unit_number then
+    restore_proxy_health(proxy)
+    return
+  end
+
+  local link = storage.trailers[head_unit_number]
+  if not link then
+    restore_proxy_health(proxy)
+    remove_link(head_unit_number)
+    return
+  end
+
+  migrate_link_shape(link)
+  for _, segment in ipairs(link.trailers) do
+    if segment.collision_proxy == proxy then
+      local trailer = segment.trailer
+      if not is_valid(trailer) then
+        remove_whole_link_for_entity(proxy, link, head_unit_number, nil)
+        return
+      end
+
+      local current_health = trailer.health or 1
+      local remaining_health = current_health - damage_amount
+      if remaining_health <= 0 then
+        trailer.health = 0
+        remove_whole_link_for_entity(trailer, link, head_unit_number, nil)
+      else
+        trailer.health = remaining_health
+        restore_proxy_health(proxy)
+      end
+      return
+    end
+  end
+
+  restore_proxy_health(proxy)
 end
 
 local function clear_debug_rendering()
@@ -802,6 +856,11 @@ function manager.on_entity_removed(event)
       end
     end
   end
+end
+
+function manager.on_entity_damaged(event)
+  ensure_storage()
+  apply_proxy_damage_to_trailer(event.entity, event.final_damage_amount)
 end
 
 function manager.on_player_driving_changed_state(event)

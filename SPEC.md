@@ -108,6 +108,7 @@ Confirmed from Factorio 2.x local base data and official API docs:
 - `LuaEntity.teleport(position, surface, raise_teleported, snap_to_grid, build_check_type)` is used to move the trailer.
 - `LuaSurface.can_place_entity{name=..., position=..., force=..., build_check_type=...}` can pre-check placement/collision.
 - `defines.events.on_player_driving_changed_state` is used to prevent players from driving the trailer entity.
+- `defines.events.on_entity_damaged` is used to forward damage from a hidden trailer collision proxy to its matching visible cargo trailer.
 - `defines.events.on_player_mined_entity` and `defines.events.on_robot_mined_entity` provide a mining buffer that this mod uses to return the linked head item and linked vehicle inventories when any visible road-trailer part is mined.
 - Destroy events without a mining buffer, including death and `script_raised_destroy`, remove every linked road-trailer part without returning linked inventories.
 - `CollisionMask` is prototype-level data. The available documented options include `layers`, `not_colliding_with_itself`, and `colliding_with_tiles_only`; no entity-instance or specific two-entity-pair collision exclusion is used by this mod.
@@ -182,7 +183,7 @@ Prototype name: `trailer-cargo`
 - Keeps its own `weight = 4000`, but this does not add to the road head's native car mass because the trailer is a separate scripted entity.
 - Players are ejected if they enter it as a driver
 - Uses copied `kj_warrig` cargo trailer graphics in Phase 1
-- Uses a longer selection footprint than the head.
+- Uses a longer selection footprint than the head, with the rear side shortened enough to keep the damage/health bar close to the visible trailer body.
 - Has a full trailer-sized interaction collision box with an empty collision mask. It is the stable visual/inventory entity and is not responsible for obstacle blocking.
 - Inserters interact with the visible cargo entity's inventory through that full interaction box.
 - Uses the wagon minimap images `graphics/map_symbol/wagon_map_symbol.png` and `graphics/map_symbol/wagon_map_symbol_selected.png`.
@@ -197,6 +198,7 @@ Prototype name: `trailer-cargo-collision-proxy`
 - Uses a void energy source and zero practical traction settings.
 - Uses the same explicit collision mask as `trailer-head`, with `not_colliding_with_itself=true`, so the scripted linked vehicle parts do not collide with each other.
 - Uses the full trailer collision footprint. Collision with the linked head is avoided through the shared linked-vehicle collision mask and `not_colliding_with_itself=true`.
+- Is damageable only as a damage relay. Runtime damage received by the proxy is applied to the matching visible `trailer-cargo`, then the proxy health is restored so the player-visible trailer health is the authoritative health.
 
 ### Items and Recipes
 
@@ -409,6 +411,7 @@ When any linked road-trailer part is destroyed rather than mined, the entire lin
 
 - The linked head, all linked visible trailers, and all linked collision proxies are removed.
 - Inventories and fuel in the linked head and linked trailers are lost, matching destruction rather than mining.
+- Damage to a hidden collision proxy reduces the corresponding visible cargo trailer's health. If that visible trailer reaches zero health, the linked road vehicle is destroyed and inventories/fuel are lost.
 
 ## Kinematics
 
@@ -427,7 +430,7 @@ Current trailer head tuning values:
 
 - Semi-Trailer effectivity: `0.7`
 - Semi-Trailer consumption: `"2500kW"`
-- Semi-Trailer braking power: `"250kW"`
+- Semi-Trailer braking power: `"400kW"`
 - Semi-Trailer friction: `0.0015`
 - Semi-Trailer rotation speed: `0.01`
 - Semi-Trailer rotation snap angle: `0.015`
@@ -491,7 +494,7 @@ The head's acceleration, braking, steering, and speed are left to Factorio's nat
 
 ## Collision
 
-Phase 1 does not implement full native vehicle impact behavior. The visible trailer cargo prototype uses `collision_mask = {layers = {}}` so its sprite/inventory entity can always stay visually stable and is not hidden by failed collision-checked teleports. Obstacle blocking is handled by `trailer-cargo-collision-proxy`, an invisible car prototype with the same base-car-equivalent collision mask as the head plus `not_colliding_with_itself=true`.
+Phase 1 does not implement full native vehicle impact behavior. The visible trailer cargo prototype uses `collision_mask = {layers = {}}` so its sprite/inventory entity can always stay visually stable and is not hidden by failed collision-checked teleports. Obstacle blocking and incoming damage hit detection are handled by `trailer-cargo-collision-proxy`, an invisible car prototype with the same base-car-equivalent collision mask as the head plus `not_colliding_with_itself=true`.
 
 The visible trailer cargo entity uses the trailer-sized collision box even though its collision mask is empty. This keeps it non-blocking while giving inserters a normal-sized target area for loading and unloading the cargo inventory.
 
