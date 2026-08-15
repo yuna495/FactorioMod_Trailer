@@ -2,6 +2,15 @@ local head = table.deepcopy(data.raw.car.car)
 local geometry = require("scripts.trailer_geometry")
 
 local WARRIG_SOUND_PATH = "__Trailer__/sounds/"
+local HEAD_TUNING = {
+  effectivity = 0.7,
+  consumption = "1500kW",
+  braking_power = "200kW",
+  friction = 0.0015,
+  rotation_speed = 0.01,
+  rotation_snap_angle = 0.015,
+  weight = 20000
+}
 
 local function warrig_body_stripes()
   local stripes = {}
@@ -60,7 +69,13 @@ head.minable = {mining_time = 0.5, result = "trailer-head"}
 head.collision_box = geometry.HEAD_COLLISION_BOX
 head.selection_box = geometry.HEAD_SELECTION_BOX
 head.collision_mask = geometry.LINKED_VEHICLE_COLLISION_MASK
-head.weight = 1200
+head.effectivity = HEAD_TUNING.effectivity
+head.consumption = HEAD_TUNING.consumption
+head.braking_power = HEAD_TUNING.braking_power
+head.friction = HEAD_TUNING.friction
+head.rotation_speed = HEAD_TUNING.rotation_speed
+head.rotation_snap_angle = HEAD_TUNING.rotation_snap_angle
+head.weight = HEAD_TUNING.weight
 head.inventory_size = 40
 head.guns = nil
 head.render_layer = "object"

@@ -48,7 +48,7 @@ Copied sounds are unmodified.
 - engine start/stop/no-fuel sounds use the copied `engine-start.ogg`, `engine-stop.ogg`, and `engine-fail.ogg`.
 - braking and door close sounds use the copied `brakes.ogg` and `door-close.ogg`.
 - exhaust smoke uses a local `trailer-warrig-smoke` prototype with the same black trivial-smoke parameters as `kj_warrig_smoke`.
-- exhaust emission positions are scaled with the Phase 1 head sprite size and are set to `{-1.5, 2.4}` and `{1.5, 2.4}`.
+- exhaust emission positions are set to `{-1, 1.4}` and `{1, 1.4}` with `height = 1.4`.
 
 `Reference/trailer_simu` contains a Python/Pygame kinematic model. The transferred behavior is based on:
 
@@ -157,6 +157,17 @@ Current Phase 1 geometry constants:
 - head center to hitch: `2.46` tiles
 - trailer center to hitch: `5.52` tiles
 - trailer axle to hitch: `8.94` tiles
+- trailer lateral response: `0.8`
+
+Current trailer head tuning values:
+
+- effectivity: `0.7`
+- consumption: `"200kW"`
+- braking power: `"200kW"`
+- friction: `0.002`
+- rotation speed: `0.01`
+- rotation snap angle: `0.015`
+- weight: `3000`
 
 Current prototype dimensions:
 
@@ -181,16 +192,18 @@ Each tick for registered linked pairs:
 
 1. Validate head and trailer.
 2. Compute current hitch position behind the head.
-3. Compute hitch displacement from the previous hitch position.
-4. Build trailer forward and perpendicular vectors from the stored trailer orientation.
-5. Project hitch displacement onto the trailer perpendicular vector.
-6. Convert lateral displacement into a trailer orientation delta using `delta / TRAILER_AXLE_TO_HITCH_DISTANCE`.
-7. Clamp trailer/head angle difference to `MAX_HITCH_ANGLE_TURNS`.
-8. Reconstruct trailer center from hitch and trailer orientation.
+3. Derive the previously accepted trailer axle position from the accepted trailer center and orientation.
+4. Compute the ideal no-side-slip trailer orientation from the previous axle position toward the current hitch position.
+5. Blend the stored trailer orientation toward that no-side-slip orientation by `TRAILER_LATERAL_RESPONSE`.
+6. Clamp trailer/head angle difference to `MAX_HITCH_ANGLE_TURNS`.
+7. Reconstruct trailer center from hitch and trailer orientation.
+8. Derive the debug axle position from hitch and trailer orientation.
 9. Move the hidden collision proxy from the last accepted pose to the reconstructed target pose in substeps. Each substep compares `LuaSurface.can_place_entity` and `LuaEntity.teleport` for the proxy at the step position and rounded direction, using `defines.build_check_type.ghost_revive` for both calls.
 10. If every substep succeeds, teleport the visible trailer to the accepted proxy position and assign both orientations.
 11. If any substep fails, restore the head, proxy, visible trailer, hitch history, and trailer orientation to the last accepted pose; set head speed to `0`; show blocked debug text.
 12. Store the accepted head, hitch, proxy/trailer position, and trailer orientation for save/load continuity.
+
+`TRAILER_LATERAL_RESPONSE` is a tire-side-slip resistance approximation. `1.0` means the trailer tries to satisfy the axle no-side-slip constraint immediately. Lower values allow more side drag/slip and smooth the response. Higher values make the trailer rotate toward the axle constraint more aggressively.
 
 The proxy substep target spacing is `0.22` tiles. The step count is based on the larger of center movement and angular sweep at the trailer collision-box half diagonal, capped at `64` substeps per linked trailer per tick to keep UPS cost bounded.
 
